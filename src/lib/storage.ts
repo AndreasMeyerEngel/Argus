@@ -70,11 +70,8 @@ export async function saveImage(key: string, dataURL: string): Promise<void> {
 }
 
 export async function loadImage(key: string): Promise<string | null> {
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(key, 60 * 60) // válida por 1 hora
-  if (error || !data) return null
-  return data.signedUrl
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(key)
+  return data.publicUrl
 }
 
 export async function deleteImagesByPrefix(prefix: string): Promise<void> {
