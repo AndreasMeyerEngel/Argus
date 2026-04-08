@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #0d0f14;
+  color: #e8eaf0;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #13161d;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2f3e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4152;
+}
+
+/* ─── Markdown renderer ───────────────────────────────────────────────────── */
+.prose-pxqa { color: #e8eaf0; font-size: 0.8125rem; line-height: 1.6; }
+.prose-pxqa h1, .prose-pxqa h2, .prose-pxqa h3 { font-weight: 600; margin: 0.75em 0 0.35em; color: #e8eaf0; }
+.prose-pxqa h1 { font-size: 1.1rem; }
+.prose-pxqa h2 { font-size: 1rem; }
+.prose-pxqa h3 { font-size: 0.875rem; }
+.prose-pxqa p { margin: 0.35em 0; }
+.prose-pxqa p:first-child { margin-top: 0; }
+.prose-pxqa p:last-child { margin-bottom: 0; }
+.prose-pxqa ul, .prose-pxqa ol { margin: 0.35em 0; padding-left: 1.4em; }
+.prose-pxqa li { margin: 0.15em 0; }
+.prose-pxqa strong { font-weight: 600; color: #e8eaf0; }
+.prose-pxqa em { font-style: italic; color: #b0b8cc; }
+.prose-pxqa code { font-family: 'IBM Plex Mono', monospace; font-size: 0.8em; background: #1a1e28; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; padding: 0.1em 0.4em; color: #22d3ee; }
+.prose-pxqa pre { background: #1a1e28; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.75em 1em; overflow-x: auto; margin: 0.5em 0; }
+.prose-pxqa pre code { background: none; border: none; padding: 0; font-size: 0.8rem; color: #e8eaf0; }
+.prose-pxqa blockquote { border-left: 3px solid #4f8ef7; margin: 0.5em 0; padding: 0.25em 0.75em; color: #6b7280; }
+.prose-pxqa hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 0.75em 0; }
+.prose-pxqa table { width: 100%; border-collapse: collapse; margin: 0.5em 0; font-size: 0.8rem; }
+.prose-pxqa th { background: #1a1e28; padding: 0.4em 0.75em; text-align: left; font-weight: 600; border: 1px solid rgba(255,255,255,0.07); }
+.prose-pxqa td { padding: 0.35em 0.75em; border: 1px solid rgba(255,255,255,0.07); }
+
+/* Amber variant for task notes */
+.prose-pxqa-amber { color: #fbbf24; }
+.prose-pxqa-amber strong { color: #fbbf24; }
+.prose-pxqa-amber code { color: #fbbf24; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.2); }
