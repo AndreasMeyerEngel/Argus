@@ -1,18 +1,59 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList } from 'lucide-react'
+import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList, Download, Upload } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { defaultState } from '../lib/storage'
+import { AppState } from '../types'
 import { Modal } from './ui/Modal'
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useApp()
   const [userName, setUserName] = useState(state.settings.userName)
   const [reportPeriodDays, setReportPeriodDays] = useState(state.settings.reportPeriodDays)
+  const [importError, setImportError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const save = () => {
     dispatch({ type: 'UPDATE_SETTINGS', payload: { userName, reportPeriodDays } })
     onClose()
   }
+
+  const handleExport = () => {
+    const date = new Date().toISOString().slice(0, 10)
+    const json = JSON.stringify(state, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `argus-backup-${date}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError('')
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as AppState
+        if (!parsed.epics || !parsed.scenarios || !parsed.bugs) {
+          setImportError('Arquivo inválido — não parece ser um backup do Argus.')
+          return
+        }
+        const restored: AppState = { ...defaultState, ...parsed }
+        dispatch({ type: 'SET_STATE', payload: restored })
+        onClose()
+      } catch {
+        setImportError('Erro ao ler o arquivo. Verifique se é um JSON válido.')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const inputCls = 'w-full bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent'
 
   return (
     <Modal title="Configurações" onClose={onClose} size="sm">
@@ -20,7 +61,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
         <div>
           <label className="block text-xs text-muted mb-1.5">Seu nome</label>
           <input
-            className="w-full bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            className={inputCls}
             value={userName}
             onChange={e => setUserName(e.target.value)}
             placeholder="Nome do executor"
@@ -30,7 +71,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           <label className="block text-xs text-muted mb-1.5">Período padrão do relatório (dias)</label>
           <input
             type="number"
-            className="w-full bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            className={inputCls}
             value={reportPeriodDays}
             onChange={e => setReportPeriodDays(Number(e.target.value))}
             min={1}
@@ -43,6 +84,38 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
         >
           Salvar
         </button>
+
+        {/* Backup */}
+        <div className="border-t border-white/[0.07] pt-4 flex flex-col gap-2">
+          <p className="text-xs text-muted uppercase tracking-wider mb-1">Backup de dados</p>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
+          >
+            <Download size={14} className="text-accent" />
+            Exportar backup (.json)
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
+          >
+            <Upload size={14} className="text-accent" />
+            Importar backup (.json)
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImport}
+          />
+          {importError && (
+            <p className="text-xs text-red">{importError}</p>
+          )}
+          <p className="text-xs text-muted">
+            Ao importar, os dados atuais serão substituídos pelo backup.
+          </p>
+        </div>
       </div>
     </Modal>
   )

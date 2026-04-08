@@ -1145,7 +1145,7 @@ function TaskCard({
   onEditScenario, onDeleteScenario,
 }: TaskCardProps) {
   const [notesOpen, setNotesOpen] = useState(false)
-  const epicId = task.epicId
+  const epicId = task.epicId!
 
   return (
     <div className={`rounded-xl overflow-hidden border ${task.notes ? 'bg-amber/[0.03] border-amber/30' : 'bg-surface border-white/[0.07]'}`}>
