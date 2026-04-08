@@ -7,7 +7,8 @@ import {
 } from 'recharts'
 import {
   Plus, Search, ChevronDown, ChevronRight, Play, Trash2, Edit2, Bug, Link,
-  CheckSquare, Image as ImageIcon, AlertCircle, GripVertical, X, Save, ArrowUp, ArrowDown
+  CheckSquare, Image as ImageIcon, AlertCircle, GripVertical, X, Save, ArrowUp, ArrowDown,
+  FileText, Copy, Check
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { Epic, TestScenario, TestStep, Bug as BugType, TestExecution } from '../types'
@@ -1121,12 +1122,137 @@ function TaskFormModal({ epicId, task, onClose }: TaskFormProps) {
   )
 }
 
+// ─── Jira Export Modal ────────────────────────────────────────────────────────
+
+const statusEmoji: Record<string, string> = {
+  passed: '✅', failed: '❌', blocked: '🔶', partial: '🔸', pending: '⏳'
+}
+const statusLabel: Record<string, string> = {
+  passed: 'Passou', failed: 'Falhou', blocked: 'Bloqueado', partial: 'Parcial', pending: 'Pendente'
+}
+const critLabel: Record<string, string> = {
+  critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa'
+}
+
+function buildJiraMarkdown(
+  task: import('../types').EpicTask,
+  scenarios: TestScenario[],
+  bugs: BugType[]
+): string {
+  const lines: string[] = []
+
+  lines.push(`## Tarefa: ${task.name}`)
+  if (task.description) lines.push(`\n**Descrição:** ${task.description}`)
+  if (task.notes) lines.push(`\n**Observações:** ${task.notes}`)
+  lines.push('\n---')
+
+  // Summary
+  const counts = { passed: 0, failed: 0, blocked: 0, partial: 0, pending: 0 }
+  scenarios.forEach(s => { counts[s.status] = (counts[s.status] ?? 0) + 1 })
+  lines.push('\n### Resumo de Execução')
+  lines.push(`| Status | Qtd |`)
+  lines.push(`|--------|-----|`)
+  if (counts.passed)  lines.push(`| ✅ Passou    | ${counts.passed} |`)
+  if (counts.failed)  lines.push(`| ❌ Falhou    | ${counts.failed} |`)
+  if (counts.partial) lines.push(`| 🔸 Parcial   | ${counts.partial} |`)
+  if (counts.blocked) lines.push(`| 🔶 Bloqueado | ${counts.blocked} |`)
+  if (counts.pending) lines.push(`| ⏳ Pendente  | ${counts.pending} |`)
+  lines.push(`| **Total**    | **${scenarios.length}** |`)
+
+  // Scenarios
+  scenarios.forEach((s, i) => {
+    lines.push(`\n---\n`)
+    lines.push(`### Cenário ${i + 1}: ${s.title}`)
+    lines.push(`**Criticidade:** ${critLabel[s.criticality]} | **Status:** ${statusEmoji[s.status]} ${statusLabel[s.status]}${s.area ? ` | **Área:** ${s.area}` : ''}`)
+
+    if (s.preconditions?.length) {
+      lines.push(`\n**Pré-condições:**`)
+      s.preconditions.forEach(p => lines.push(`- ${p}`))
+    }
+    if (s.testData) {
+      lines.push(`\n**Dados de teste:**\n\`\`\`\n${s.testData}\n\`\`\``)
+    }
+    if (s.acceptanceCriteria) {
+      lines.push(`\n**Critérios de aceite:**\n${s.acceptanceCriteria}`)
+    }
+    if (s.steps?.length) {
+      lines.push(`\n**Passos:**`)
+      lines.push(`| # | Ação | Resultado esperado |`)
+      lines.push(`|---|------|--------------------|`)
+      s.steps.forEach(st => lines.push(`| ${st.order} | ${st.action} | ${st.expected} |`))
+    }
+
+    // Last execution
+    if (s.executions?.length) {
+      const last = [...s.executions].sort((a, b) => b.id.localeCompare(a.id))[0]
+      lines.push(`\n**Última execução:** ${format(new Date(last.date), 'dd/MM/yyyy')} — ${statusEmoji[last.result]} ${statusLabel[last.result]}`)
+      if (last.executedBy) lines.push(`**Executor:** ${last.executedBy}`)
+      if (last.notes) lines.push(`**Notas:** ${last.notes}`)
+      if (last.imgCount > 0) lines.push(`**Evidências:** ${last.imgCount} imagem(ns) anexada(s)`)
+    }
+
+    // Linked bugs
+    if (s.linkedBugs?.length) {
+      const linked = bugs.filter(b => s.linkedBugs.includes(b.id))
+      if (linked.length) {
+        lines.push(`\n**Bugs vinculados:**`)
+        linked.forEach(b => lines.push(`- [${b.severity.toUpperCase()}] ${b.title} — ${b.status}`))
+      }
+    }
+  })
+
+  return lines.join('\n')
+}
+
+function JiraExportModal({
+  task, scenarios, bugs, onClose
+}: {
+  task: import('../types').EpicTask
+  scenarios: TestScenario[]
+  bugs: BugType[]
+  onClose: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const markdown = buildJiraMarkdown(task, scenarios, bugs)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(markdown)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Modal title="Exportar para Jira" onClose={onClose} size="lg">
+      <div className="flex flex-col gap-3">
+        <p className="text-xs text-muted">
+          Markdown formatado com todos os cenários, execuções e bugs da tarefa. Cole diretamente em qualquer campo do Jira.
+        </p>
+        <div className="relative">
+          <pre className="bg-surface2 border border-white/[0.07] rounded-lg p-4 text-xs text-text/80 overflow-auto max-h-[50vh] whitespace-pre-wrap font-mono">
+            {markdown}
+          </pre>
+        </div>
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-muted hover:text-text">Fechar</button>
+          <button
+            onClick={handleCopy}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copied ? 'bg-green text-white' : 'bg-accent text-white hover:bg-accent/80'}`}
+          >
+            {copied ? <><Check size={14} /> Copiado!</> : <><Copy size={14} /> Copiar</>}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ─── Task Card ────────────────────────────────────────────────────────────────
 
 interface TaskCardProps {
   task: import('../types').EpicTask
   taskScenarios: TestScenario[]
   epicTasks: import('../types').EpicTask[]
+  epicBugs: BugType[]
   pct: number
   passed: number
   total: number
@@ -1140,11 +1266,12 @@ interface TaskCardProps {
 }
 
 function TaskCard({
-  task, taskScenarios, epicTasks, pct, passed, total,
+  task, taskScenarios, epicTasks, epicBugs, pct, passed, total,
   collapsed, onToggle, onAddScenario, onEdit, onDelete,
   onEditScenario, onDeleteScenario,
 }: TaskCardProps) {
   const [notesOpen, setNotesOpen] = useState(false)
+  const [showExport, setShowExport] = useState(false)
   const epicId = task.epicId!
 
   return (
@@ -1196,6 +1323,13 @@ function TaskCard({
           >
             <Plus size={12} /> Cenário
           </button>
+          <button
+            onClick={() => setShowExport(true)}
+            className="p-1.5 text-muted hover:text-text hover:bg-surface rounded-lg transition-colors"
+            title="Exportar para Jira"
+          >
+            <FileText size={12} />
+          </button>
           <button onClick={onEdit} className="p-1.5 text-muted hover:text-text hover:bg-surface rounded-lg transition-colors">
             <Edit2 size={12} />
           </button>
@@ -1204,6 +1338,15 @@ function TaskCard({
           </button>
         </div>
       </div>
+
+      {showExport && (
+        <JiraExportModal
+          task={task}
+          scenarios={taskScenarios}
+          bugs={epicBugs}
+          onClose={() => setShowExport(false)}
+        />
+      )}
 
       {/* ── Notes panel (colapsável) ── */}
       {task.notes && notesOpen && (
@@ -1323,6 +1466,7 @@ function TasksTab({ epicId }: { epicId: string }) {
               task={task}
               taskScenarios={taskScenarios}
               epicTasks={epicTasks}
+              epicBugs={state.bugs.filter(b => b.epicId === epicId)}
               pct={pct}
               passed={passed}
               total={total}
