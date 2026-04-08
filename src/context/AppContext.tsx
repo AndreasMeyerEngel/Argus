@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react'
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react'
 import { AppState, Epic, EpicTask, TestScenario, Bug, TestExecution } from '../types'
-import { loadState, saveState } from '../lib/storage'
+import { loadState, saveState, defaultState } from '../lib/storage'
 
 type Action =
   | { type: 'SET_STATE'; payload: AppState }
@@ -199,11 +199,30 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null)
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, loadState)
+  const [state, dispatch] = useReducer(reducer, defaultState)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    saveState(state)
-  }, [state])
+    loadState().then(loaded => {
+      dispatch({ type: 'SET_STATE', payload: loaded })
+      setReady(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (ready) saveState(state)
+  }, [state, ready])
+
+  if (!ready) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-bg">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muted">Carregando...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
