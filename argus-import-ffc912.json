@@ -1,0 +1,624 @@
+{
+  "epics": [
+    {
+      "id": "0001",
+      "name": "Gestão de saldo via fatura",
+      "description": "Épico responsável por toda a gestão de saldo de contas financeiras via fatura. Engloba o cálculo de limite disponível, movimentações de ledger e regras de negócio relacionadas à disponibilidade de crédito por conta financeira.",
+      "squad": "Financial",
+      "product": "FFC",
+      "status": "running",
+      "priority": "high",
+      "startDate": "2026-04-07",
+      "deadline": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "0001",
+      "epicId": "0001",
+      "name": "[BACK] Readaptar Cálculo de Limite Disponível — FFC-912",
+      "description": "Readaptar o serviço FinancialAccountLimitService para recalcular o limite disponível com base nas entradas do ledger (FinancialAccountLedgerEntry), garantindo consistência entre available_limit no banco e o saldo real calculado em tempo de execução. Serviço: App\\Financial\\Services\\FinancialAccountLimitService | Branch: feat/FFC-912",
+      "notes": "Pontos em aberto (aguardando alinhamento):\n\n1. **available_limit negativo** (cenário 14): débitos acima do limite são aceitos silenciosamente — comportamento intencional?\n2. **available_limit acima do grantedLimit** (cenário 15): crédito puro sem débito prévio — deve ser impedido?\n3. **Exceção vs DTO vazio** (cenários 10 e 11): serviço lança exceção, mas descrição original sugeria retornar FinancialAccountLimitDTO::empty() — qual é o contrato correto?",
+      "order": 1,
+      "createdAt": "2026-04-07T16:42:48.000Z"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "0001",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 1,
+      "title": "Limite disponível calculado corretamente com débitos",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "Limite concedido (grantedLimit): R$ 10.000",
+        "available_limit inicial: R$ 10.000",
+        "version inicial: 0",
+        "1 entrada de ledger: DEBIT = R$ 3.000"
+      ],
+      "testData": "limit=10000\navailable_limit=10000\nversion=0\nstatus=active\nledger=[DEBIT=3000]",
+      "acceptanceCriteria": "availableLimit = grantedLimit - netBalance\navailableLimit esperado: 7000 (10000 - 3000)\ndb_available_limit deve ser atualizado para 7000\ndb_version deve incrementar para 1",
+      "steps": [
+        { "id": "s01e01", "order": 1, "action": "Criar conta ativa com grantedLimit=10000, available_limit=10000, version=0 e uma entrada de ledger DEBIT=3000", "expected": "Conta e ledger criados com sucesso", "observed": "OK" },
+        { "id": "s01e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "dto_availableLimit = 7000", "observed": "dto_availableLimit = 7000" },
+        { "id": "s01e03", "order": 3, "action": "Verificar banco de dados após o cálculo", "expected": "db_available_limit = 7000 e db_version = 1", "observed": "db_available_limit = 7000, db_version = 1" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0001",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_grantedLimit=10000 | dto_availableLimit=7000 | db_available_limit=7000 | db_version=1",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0002",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 2,
+      "title": "Débito e crédito: net balance correto",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "Limite concedido: R$ 10.000",
+        "2 entradas de ledger: DEBIT R$ 4.000 e CREDIT R$ 1.500"
+      ],
+      "testData": "limit=10000\nstatus=active\nledger=[DEBIT=4000, CREDIT=1500]\nnet_balance_esperado=2500",
+      "acceptanceCriteria": "netBalance = débitos - créditos = 4000 - 1500 = 2500\navailableLimit = grantedLimit - netBalance = 10000 - 2500 = 7500",
+      "steps": [
+        { "id": "s02e01", "order": 1, "action": "Criar conta ativa com ledger contendo DEBIT=4000 e CREDIT=1500", "expected": "Conta e entradas criadas com sucesso", "observed": "OK" },
+        { "id": "s02e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "dto_availableLimit = 7500 (netBalance = 2500)", "observed": "dto_availableLimit = 7500" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0002",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_grantedLimit=10000 | dto_availableLimit=7500 | net_esperado=2500",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0003",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 3,
+      "title": "available_limit persistido no banco após cálculo",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "available_limit antes do cálculo: R$ 10.000",
+        "version antes do cálculo: 0",
+        "1 entrada de ledger: DEBIT = R$ 4.000"
+      ],
+      "testData": "limit=10000\navailable_limit=10000\nversion=0\nstatus=active\nledger=[DEBIT=4000]",
+      "acceptanceCriteria": "available_limit deve ser persistido no banco após o cálculo\nvalor esperado no banco: 6000 (10000 - 4000)\nversion deve incrementar de 0 para 1",
+      "steps": [
+        { "id": "s03e01", "order": 1, "action": "Registrar available_limit e version antes da chamada ao serviço", "expected": "available_limit=10000, version=0", "observed": "available_limit=10000, version=0" },
+        { "id": "s03e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "Cálculo executado sem erros", "observed": "OK" },
+        { "id": "s03e03", "order": 3, "action": "Consultar o banco de dados após o cálculo", "expected": "db_available_limit=6000, db_version=1", "observed": "db_available_limit=6000, db_version=1" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0003",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_availableLimit=6000 | db_available_limit_antes=10000 | db_available_limit_depois=6000 | db_version_antes=0 | db_version_depois=1",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0004",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 4,
+      "title": "Locking otimista — versão obsoleta lança RuntimeException",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "partial",
+      "isSensitive": false,
+      "preconditions": [
+        "Dois processos simultâneos tentam atualizar o mesmo registro",
+        "Processo 1 leu version=X e ainda não salvou",
+        "Processo 2 atualizou e incrementou a version para X+1"
+      ],
+      "testData": "Cenário de concorrência real — não simulável via Tinker em sessão única\nO serviço executa findActiveByAccountId() dentro da transação, lendo sempre a versão atual",
+      "acceptanceCriteria": "Versão obsoleta deve lançar RuntimeException: 'Optimistic lock failed: stale version for App\\Financial\\Models\\FinancialAccountLimit'",
+      "steps": [
+        { "id": "s04e01", "order": 1, "action": "Simular dois processos concorrentes com mock do repositório (FinancialAccountLimitServiceTest)", "expected": "RuntimeException ao tentar salvar com versão desatualizada", "observed": "Não simulável via Tinker — requer unit test com mock" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0004",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "partial",
+          "notes": "Não simulável via Tinker em sessão única. Service lê versão atual dentro da transação — não detecta staleness pré-existente. Lock só falha em concorrência real (dois processos simultâneos). Cobertura via unit test com mock do repositório.",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "Não simulável via Tinker em sessão única. O serviço executa findActiveByAccountId() dentro da transação, lendo sempre a versão atual. Cobertura deve ser feita por unit test com mock do repositório (FinancialAccountLimitServiceTest).",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0005",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 5,
+      "title": "Falha no save reverte transação — available_limit inalterado",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "available_limit inicial: R$ 10.000",
+        "version inicial: 0",
+        "Interceptor: atualiza version=999 após a leitura para forçar stale lock"
+      ],
+      "testData": "limit=10000\navailable_limit=10000\nversion=0\nstatus=active\nledger=[DEBIT=3000]\ninterceptor=version=999 após leitura (simula lock stale)",
+      "acceptanceCriteria": "Falha no save deve lançar exceção de optimistic lock\nTransação deve ser revertida (rollback)\navailable_limit deve permanecer inalterado após rollback",
+      "steps": [
+        { "id": "s05e01", "order": 1, "action": "Registrar available_limit antes da chamada: R$ 10.000", "expected": "available_limit=10000", "observed": "available_limit=10000" },
+        { "id": "s05e02", "order": 2, "action": "Injetar interceptor que atualiza version=999 após a leitura do registro", "expected": "Interceptor ativo", "observed": "OK" },
+        { "id": "s05e03", "order": 3, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "RuntimeException: Optimistic lock failed", "observed": "exception=Optimistic lock failed: stale version for App\\Financial\\Models\\FinancialAccountLimit" },
+        { "id": "s05e04", "order": 4, "action": "Verificar available_limit no banco após a exceção", "expected": "available_limit permanece 10000 (rollback confirmado)", "observed": "available_limit=10000, rollback_confirmado=true" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0005",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "exception=Optimistic lock failed | available_antes=10000 | available_apos_rollback=10000 | rollback_confirmado=true",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0006",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 6,
+      "title": "Conta ativa sem entradas de ledger retorna limite completo",
+      "area": "Financial / LimitService",
+      "criticality": "medium",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "Limite concedido: R$ 10.000",
+        "Ledger vazio — nenhuma entrada de débito ou crédito"
+      ],
+      "testData": "limit=10000\nstatus=active\nledger=[]",
+      "acceptanceCriteria": "Sem entradas de ledger, availableLimit deve ser igual ao grantedLimit\nCOALESCE garante netBalance=0 quando ledger está vazio\navailableLimit = 10000 - 0 = 10000",
+      "steps": [
+        { "id": "s06e01", "order": 1, "action": "Criar conta ativa com ledger vazio", "expected": "Conta criada sem entradas de ledger", "observed": "OK" },
+        { "id": "s06e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "dto_availableLimit = 10000 (igual ao grantedLimit)", "observed": "dto_availableLimit = 10000" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0006",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_grantedLimit=10000 | dto_availableLimit=10000",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0007",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 7,
+      "title": "Múltiplas entradas de débito somadas corretamente",
+      "area": "Financial / LimitService",
+      "criticality": "medium",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "Limite concedido: R$ 10.000",
+        "2 entradas de ledger: DEBIT R$ 2.000 e DEBIT R$ 3.000"
+      ],
+      "testData": "limit=10000\nstatus=active\nledger=[DEBIT=2000, DEBIT=3000]\nnet_esperado=5000",
+      "acceptanceCriteria": "Múltiplos débitos devem ser somados corretamente\nnetBalance = 2000 + 3000 = 5000\navailableLimit = 10000 - 5000 = 5000",
+      "steps": [
+        { "id": "s07e01", "order": 1, "action": "Criar conta ativa com duas entradas DEBIT (2000 e 3000)", "expected": "Conta e ledger criados com sucesso", "observed": "OK" },
+        { "id": "s07e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "dto_availableLimit = 5000 (netBalance = 5000)", "observed": "dto_availableLimit = 5000" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0007",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_grantedLimit=10000 | dto_availableLimit=5000",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0008",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 8,
+      "title": "accountId zero lança InvalidArgumentException",
+      "area": "Financial / LimitService",
+      "criticality": "medium",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "accountId = 0 (valor inválido, deve ser rejeitado)"
+      ],
+      "testData": "accountId=0",
+      "acceptanceCriteria": "accountId <= 0 deve lançar InvalidArgumentException\nMensagem esperada: 'ID de conta inválido'",
+      "steps": [
+        { "id": "s08e01", "order": 1, "action": "Chamar FinancialAccountLimitService::calculate(0)", "expected": "InvalidArgumentException: 'ID de conta inválido'", "observed": "exception=ID de conta inválido" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0008",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "exception=ID de conta inválido",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0009",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 9,
+      "title": "accountId negativo lança InvalidArgumentException",
+      "area": "Financial / LimitService",
+      "criticality": "medium",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "accountId = -1 (valor negativo, inválido)"
+      ],
+      "testData": "accountId=-1",
+      "acceptanceCriteria": "accountId negativo deve lançar InvalidArgumentException\nMensagem esperada: 'ID de conta inválido'",
+      "steps": [
+        { "id": "s09e01", "order": 1, "action": "Chamar FinancialAccountLimitService::calculate(-1)", "expected": "InvalidArgumentException: 'ID de conta inválido'", "observed": "exception=ID de conta inválido" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0009",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "exception=ID de conta inválido",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0010",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 10,
+      "title": "Conta inexistente lança ActiveFinancialAccountLimitNotFoundException",
+      "area": "Financial / LimitService",
+      "criticality": "medium",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "accountId = 999999 (não existe no banco de dados)"
+      ],
+      "testData": "accountId=999999",
+      "acceptanceCriteria": "Conta inexistente deve lançar ActiveFinancialAccountLimitNotFoundException\nMensagem esperada: 'Nenhum limite ativo encontrado para a conta 999999'",
+      "steps": [
+        { "id": "s10e01", "order": 1, "action": "Chamar FinancialAccountLimitService::calculate(999999)", "expected": "ActiveFinancialAccountLimitNotFoundException: 'Nenhum limite ativo encontrado para a conta 999999'", "observed": "exception=Nenhum limite ativo encontrado para a conta 999999" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0010",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "exception=Nenhum limite ativo encontrado para a conta 999999",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0011",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 11,
+      "title": "Limite com status Suspended lança exceção",
+      "area": "Financial / LimitService",
+      "criticality": "medium",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta com account_status=active",
+        "Limite financeiro com limit_status=suspended"
+      ],
+      "testData": "account_status=active\nlimit_status=suspended",
+      "acceptanceCriteria": "Limite com status Suspended deve lançar ActiveFinancialAccountLimitNotFoundException\nMensagem esperada: 'Nenhum limite ativo encontrado para a conta'",
+      "steps": [
+        { "id": "s11e01", "order": 1, "action": "Criar conta ativa com limite em status suspended", "expected": "Conta e limite criados com sucesso", "observed": "OK" },
+        { "id": "s11e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "ActiveFinancialAccountLimitNotFoundException", "observed": "exception=Nenhum limite ativo encontrado para a conta" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0011",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "exception=Nenhum limite ativo encontrado para a conta",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "Divergência com PR: descrição original sugeria retornar FinancialAccountLimitDTO::empty(). Serviço lança exceção em vez disso. Alinhar contrato com a equipe.",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0012",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 12,
+      "title": "Entradas de ledger de outras contas não afetam o cálculo",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta A (id=10): ativa, limite R$ 10.000, ledger vazio",
+        "Conta B (id=11): ledger com DEBIT R$ 9.000"
+      ],
+      "testData": "contaA.id=10\ncontaA.limit=10000\ncontaA.status=active\ncontaA.ledger=[]\ncontaB.id=11\ncontaB.ledger=[DEBIT=9000]",
+      "acceptanceCriteria": "Entradas de ledger da conta B não devem afetar o cálculo da conta A\navailableLimit da conta A deve ser 10000 (isolamento por account_id garantido)",
+      "steps": [
+        { "id": "s12e01", "order": 1, "action": "Criar conta A (id=10) com ledger vazio e conta B (id=11) com DEBIT=9000", "expected": "Ambas as contas criadas corretamente", "observed": "OK" },
+        { "id": "s12e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate(10) para a conta A", "expected": "dto_availableLimit = 10000 (não afetado pelo ledger da conta B)", "observed": "dto_availableLimit = 10000" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0012",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "conta_a_id=10 | conta_b_id=11 | dto_availableLimit=10000 | isolamento por account_id confirmado",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0013",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 13,
+      "title": "Limite de outra empresa não interfere no resultado",
+      "area": "Financial / LimitService",
+      "criticality": "high",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Empresa A (owner_id=11111): limite R$ 10.000, status active",
+        "Empresa B (owner_id=22222): limite R$ 50.000, status active"
+      ],
+      "testData": "empresaA.owner_id=11111\nempresaA.limit=10000\nempresaA.status=active\nempresaB.owner_id=22222\nempresaB.limit=50000\nempresaB.status=active",
+      "acceptanceCriteria": "Limite da empresa B não deve interferir no cálculo da empresa A\ngrantedLimit da empresa A deve ser 10000 (isolamento por owner_id garantido)",
+      "steps": [
+        { "id": "s13e01", "order": 1, "action": "Criar conta da empresa A (owner_id=11111, limit=10000) e conta da empresa B (owner_id=22222, limit=50000)", "expected": "Ambas as contas criadas corretamente", "observed": "OK" },
+        { "id": "s13e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate para a conta da empresa A", "expected": "dto_grantedLimit = 10000 (não afetado pelo limite de 50000 da empresa B)", "observed": "dto_grantedLimit = 10000" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0013",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "empresa_a_owner_id=11111 | empresa_b_owner_id=22222 | dto_grantedLimit_empresa_a=10000 | isolamento por owner_id confirmado",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0014",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 14,
+      "title": "available_limit fica negativo quando débitos excedem o limite",
+      "area": "Financial / LimitService",
+      "criticality": "low",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "Limite concedido: R$ 5.000",
+        "Ledger: DEBIT R$ 6.000 (excede o limite em R$ 1.000)"
+      ],
+      "testData": "limit=5000\nstatus=active\nledger=[DEBIT=6000]",
+      "acceptanceCriteria": "Débitos acima do limite devem resultar em availableLimit negativo\nNenhuma exceção deve ser lançada por available_limit negativo\navailableLimit esperado: -1000 (5000 - 6000)",
+      "steps": [
+        { "id": "s14e01", "order": 1, "action": "Criar conta ativa com limite=5000 e ledger DEBIT=6000 (acima do limite)", "expected": "Conta e ledger criados com sucesso", "observed": "OK" },
+        { "id": "s14e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "dto_availableLimit = -1000, sem exceção", "observed": "dto_availableLimit = -1000, sem_excecao=true" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0014",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_grantedLimit=5000 | dto_availableLimit=-1000 | db_available_limit=-1000 | sem_excecao=true",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "Confirmar com PO/dev se available_limit negativo é comportamento intencional.",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0015",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 15,
+      "title": "Conta apenas com créditos: available ultrapassa o limite concedido",
+      "area": "Financial / LimitService",
+      "criticality": "low",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Conta ativa com status=active",
+        "Limite concedido: R$ 10.000",
+        "Ledger: apenas CREDIT R$ 5.000 (sem débito prévio)"
+      ],
+      "testData": "limit=10000\nstatus=active\nledger=[CREDIT=5000]\nnet_calculado=-5000",
+      "acceptanceCriteria": "Crédito sem débito prévio resulta em netBalance negativo\navailableLimit = grantedLimit - netBalance = 10000 - (-5000) = 15000\navailableLimit deve ultrapassar o grantedLimit",
+      "steps": [
+        { "id": "s15e01", "order": 1, "action": "Criar conta ativa com ledger contendo apenas CREDIT=5000 (sem débitos)", "expected": "Conta e ledger criados com sucesso", "observed": "OK" },
+        { "id": "s15e02", "order": 2, "action": "Chamar FinancialAccountLimitService::calculate($accountId)", "expected": "dto_availableLimit = 15000 (acima do grantedLimit)", "observed": "dto_availableLimit = 15000" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0015",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "dto_grantedLimit=10000 | dto_availableLimit=15000 | net_calculado=-5000",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "Crédito sem débito prévio gera availableLimit > grantedLimit. Confirmar regra de negócio com PO/dev.",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    },
+    {
+      "id": "0016",
+      "epicId": "0001",
+      "taskId": "0001",
+      "order": 16,
+      "title": "COALESCE garante retorno zero quando não há entradas de ledger",
+      "area": "Financial / LimitService",
+      "criticality": "low",
+      "status": "passed",
+      "isSensitive": false,
+      "preconditions": [
+        "Ledger completamente vazio — sem entradas de débito ou crédito"
+      ],
+      "testData": "ledger=[]",
+      "acceptanceCriteria": "COALESCE deve garantir que o net balance retorne 0 (não NULL) quando não há entradas\ntipo do retorno deve ser integer",
+      "steps": [
+        { "id": "s16e01", "order": 1, "action": "Criar conta com ledger vazio e chamar cálculo", "expected": "net_balance = 0 (integer), não NULL", "observed": "net_retornado=0, tipo=integer" }
+      ],
+      "linkedBugs": [],
+      "executions": [
+        {
+          "id": "0016",
+          "date": "2026-04-07T16:42:48.000Z",
+          "result": "passed",
+          "notes": "net_retornado=0 | tipo=integer | COALESCE funcionando corretamente",
+          "executedBy": "Andreas Meyer Engel",
+          "imgCount": 0
+        }
+      ],
+      "responsible": "Andreas Meyer Engel",
+      "notes": "",
+      "createdAt": "2026-04-07T16:42:48.000Z",
+      "updatedAt": "2026-04-07T16:42:48.000Z"
+    }
+  ],
+  "bugs": [],
+  "nextEpicId": 2,
+  "nextTaskId": 2,
+  "nextScenarioId": 17,
+  "nextBugId": 1,
+  "nextExecId": 17,
+  "settings": {
+    "userName": "Andreas Meyer Engel",
+    "reportPeriodDays": 14
+  }
+}

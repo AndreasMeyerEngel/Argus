@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList, Download, Upload, LogOut } from 'lucide-react'
+import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList, Download, Upload, LogOut, ClipboardPaste } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { defaultState } from '../lib/storage'
@@ -12,6 +12,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   const [userName, setUserName] = useState(state.settings.userName)
   const [reportPeriodDays, setReportPeriodDays] = useState(state.settings.reportPeriodDays)
   const [importError, setImportError] = useState('')
+  const [importMode, setImportMode] = useState<'file' | 'paste'>('file')
+  const [pastedJson, setPastedJson] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const save = () => {
@@ -31,33 +33,36 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     URL.revokeObjectURL(url)
   }
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const applyImport = (text: string) => {
     setImportError('')
+    try {
+      const parsed = JSON.parse(text) as AppState
+      if (!parsed.epics || !parsed.scenarios || !parsed.bugs) {
+        setImportError('JSON inválido — não parece ser um backup do Argus.')
+        return
+      }
+      dispatch({ type: 'SET_STATE', payload: { ...defaultState, ...parsed } })
+      onClose()
+    } catch {
+      setImportError('JSON inválido. Verifique a sintaxe e tente novamente.')
+    }
+  }
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const parsed = JSON.parse(ev.target?.result as string) as AppState
-        if (!parsed.epics || !parsed.scenarios || !parsed.bugs) {
-          setImportError('Arquivo inválido — não parece ser um backup do Argus.')
-          return
-        }
-        const restored: AppState = { ...defaultState, ...parsed }
-        dispatch({ type: 'SET_STATE', payload: restored })
-        onClose()
-      } catch {
-        setImportError('Erro ao ler o arquivo. Verifique se é um JSON válido.')
-      }
-    }
+    reader.onload = (ev) => applyImport(ev.target?.result as string)
     reader.readAsText(file)
     e.target.value = ''
   }
 
   const inputCls = 'w-full bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent'
+  const tabCls = (active: boolean) =>
+    `flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${active ? 'bg-accent text-white' : 'text-muted hover:text-text'}`
 
   return (
-    <Modal title="Configurações" onClose={onClose} size="sm">
+    <Modal title="Configurações" onClose={onClose} size="md">
       <div className="flex flex-col gap-4">
         <div>
           <label className="block text-xs text-muted mb-1.5">Seu nome</label>
@@ -87,8 +92,9 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
         </button>
 
         {/* Backup */}
-        <div className="border-t border-white/[0.07] pt-4 flex flex-col gap-2">
-          <p className="text-xs text-muted uppercase tracking-wider mb-1">Backup de dados</p>
+        <div className="border-t border-white/[0.07] pt-4 flex flex-col gap-3">
+          <p className="text-xs text-muted uppercase tracking-wider">Backup de dados</p>
+
           <button
             onClick={handleExport}
             className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
@@ -96,26 +102,54 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             <Download size={14} className="text-accent" />
             Exportar backup (.json)
           </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
-          >
-            <Upload size={14} className="text-accent" />
-            Importar backup (.json)
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={handleImport}
-          />
-          {importError && (
-            <p className="text-xs text-red">{importError}</p>
-          )}
-          <p className="text-xs text-muted">
-            Ao importar, os dados atuais serão substituídos pelo backup.
-          </p>
+
+          {/* Import tabs */}
+          <div>
+            <div className="flex gap-1 bg-surface2 rounded-lg p-1 mb-3">
+              <button className={tabCls(importMode === 'file')} onClick={() => { setImportMode('file'); setImportError('') }}>
+                <Upload size={12} /> Arquivo
+              </button>
+              <button className={tabCls(importMode === 'paste')} onClick={() => { setImportMode('paste'); setImportError('') }}>
+                <ClipboardPaste size={12} /> Colar JSON
+              </button>
+            </div>
+
+            {importMode === 'file' ? (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
+                >
+                  <Upload size={14} className="text-accent" />
+                  Selecionar arquivo .json
+                </button>
+                <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileImport} />
+              </>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  className="w-full bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-xs text-text outline-none focus:border-accent font-mono resize-none"
+                  rows={8}
+                  placeholder={'Cole o JSON aqui...\n{\n  "epics": [...],\n  "tasks": [...],\n  "scenarios": [...]\n}'}
+                  value={pastedJson}
+                  onChange={e => { setPastedJson(e.target.value); setImportError('') }}
+                />
+                <button
+                  onClick={() => applyImport(pastedJson)}
+                  disabled={!pastedJson.trim()}
+                  className="flex items-center justify-center gap-2 w-full py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ClipboardPaste size={14} />
+                  Importar JSON colado
+                </button>
+              </div>
+            )}
+
+            {importError && <p className="text-xs text-red mt-2">{importError}</p>}
+            <p className="text-xs text-muted mt-2">
+              Ao importar, os dados atuais serão substituídos.
+            </p>
+          </div>
         </div>
       </div>
     </Modal>
