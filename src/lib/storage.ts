@@ -62,15 +62,19 @@ function dataURLToBlob(dataURL: string): Blob {
 
 export async function saveImage(key: string, dataURL: string): Promise<void> {
   const blob = dataURLToBlob(dataURL)
-  await supabase.storage.from(BUCKET).upload(key, blob, {
+  const { error } = await supabase.storage.from(BUCKET).upload(key, blob, {
     upsert: true,
     contentType: blob.type
   })
+  if (error) throw new Error(`Falha ao salvar imagem: ${error.message}`)
 }
 
 export async function loadImage(key: string): Promise<string | null> {
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(key)
-  return data.publicUrl
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(key, 60 * 60) // válida por 1 hora
+  if (error || !data) return null
+  return data.signedUrl
 }
 
 export async function deleteImagesByPrefix(prefix: string): Promise<void> {
