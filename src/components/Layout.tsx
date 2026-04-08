@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList, Download, Upload } from 'lucide-react'
+import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList, Download, Upload, LogOut } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { defaultState } from '../lib/storage'
 import { AppState } from '../types'
 import { Modal } from './ui/Modal'
@@ -123,6 +124,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { state } = useApp()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [showSettings, setShowSettings] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -195,14 +197,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Settings */}
-        <div className="px-3 pb-4 mt-auto border-t border-white/[0.07] pt-3">
+        {/* Bottom */}
+        <div className="px-3 pb-4 mt-auto border-t border-white/[0.07] pt-3 flex flex-col gap-1">
+          {user && (
+            <div className="px-3 py-2 mb-1">
+              <p className="text-xs text-muted truncate">{user.email}</p>
+            </div>
+          )}
           <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted hover:text-text hover:bg-surface2 transition-colors text-sm w-full"
           >
             <Settings size={16} />
             Configurações
+          </button>
+          <button
+            onClick={signOut}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted hover:text-red hover:bg-surface2 transition-colors text-sm w-full"
+          >
+            <LogOut size={16} />
+            Sair
           </button>
         </div>
       </aside>

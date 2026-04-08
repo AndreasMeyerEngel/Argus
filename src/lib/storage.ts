@@ -20,10 +20,13 @@ const BUCKET = 'screenshots'
 
 export async function loadState(): Promise<AppState> {
   try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return defaultState
+
     const { data, error } = await supabase
       .from('app_state')
       .select('data')
-      .eq('id', 1)
+      .eq('user_id', user.id)
       .single()
 
     if (error || !data) return defaultState
@@ -38,9 +41,11 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 export function saveState(state: AppState): void {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     await supabase
       .from('app_state')
-      .upsert({ id: 1, data: state })
+      .upsert({ user_id: user.id, data: state })
   }, 800)
 }
 
