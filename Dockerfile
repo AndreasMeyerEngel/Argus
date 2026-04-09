@@ -10,14 +10,16 @@ RUN npm run build
 
 # ── Stage 2: Compile backend ───────────────────────────────────────────────────
 FROM node:20-alpine AS backend-build
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY app/package*.json ./
-RUN npm ci
+RUN npm install
 COPY app/ .
 RUN npx prisma generate && npm run build
 
 # ── Stage 3: Production image ──────────────────────────────────────────────────
 FROM node:20-alpine
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 COPY --from=backend-build /app/package*.json ./
