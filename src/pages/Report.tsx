@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { Bug, TestScenario } from '../types'
+import { BugStatusBadge, EpicStatusBadge } from '../components/ui/Badge'
 
 const COLORS = {
   critical: '#f87171',
@@ -602,13 +603,7 @@ ${recommendations.map(r => `<div class="rec">${r}</div>`).join('')}
                         <td className="px-4 py-3 text-muted">{bug.area || '—'}</td>
                         <td className="px-4 py-3 text-muted truncate max-w-[160px]">{epic?.name || '—'}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded ${
-                            bug.status === 'open' ? 'bg-red/20 text-red' :
-                            bug.status === 'in_progress' ? 'bg-amber/20 text-amber' :
-                            'bg-gray-500/20 text-gray-400'
-                          }`}>
-                            {bug.status === 'open' ? 'Aberto' : bug.status === 'in_progress' ? 'Em progresso' : bug.status}
-                          </span>
+                          <BugStatusBadge status={bug.status} />
                         </td>
                         <td className={`px-4 py-3 text-right font-mono text-sm font-medium ${days > 2 ? 'text-red' : 'text-muted'}`}>{days}d</td>
                       </tr>
@@ -648,14 +643,7 @@ ${recommendations.map(r => `<div class="rec">${r}</div>`).join('')}
                     </td>
                     <td className={`px-4 py-3 text-right font-mono ${openBugs > 0 ? 'text-red' : 'text-muted'}`}>{openBugs}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        epic.status === 'running' ? 'bg-accent/20 text-accent' :
-                        epic.status === 'done' ? 'bg-green/20 text-green' :
-                        epic.status === 'blocked' ? 'bg-red/20 text-red' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {epic.status === 'running' ? 'Em execução' : epic.status === 'done' ? 'Concluído' : epic.status === 'blocked' ? 'Bloqueado' : epic.status === 'planning' ? 'Planejamento' : epic.status}
-                      </span>
+                      <EpicStatusBadge status={epic.status} />
                     </td>
                   </tr>
                 ))}

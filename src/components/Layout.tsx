@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, ClipboardList, Download, Upload, LogOut, ClipboardPaste } from 'lucide-react'
+import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, Download, Upload, LogOut, ClipboardPaste, Sun, Moon } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { defaultState } from '../lib/storage'
 import { AppState } from '../types'
 import { Modal } from './ui/Modal'
@@ -159,6 +160,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const { state } = useApp()
   const { user, signOut } = useAuth()
+  const { theme, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [showSettings, setShowSettings] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -167,7 +169,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { to: '/', icon: LayoutGrid, label: 'Épicos' },
-    { to: '/tarefas', icon: ClipboardList, label: 'Tarefas' },
     { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
     { to: '/report', icon: FileText, label: 'Relatório' },
   ]
@@ -264,6 +265,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className="text-muted hover:text-text p-1.5 rounded-lg hover:bg-surface2 transition-colors"
           >
             {sidebarOpen ? <X size={18} /> : <LayoutGrid size={18} />}
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+            className="text-muted hover:text-text p-1.5 rounded-lg hover:bg-surface2 transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
         </header>
 
