@@ -4,6 +4,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Theme variables ────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme="dark"] {
+  --color-bg:       #0d0f14;
+  --color-surface:  #13161d;
+  --color-surface2: #1a1e28;
+  --color-text:     #e8eaf0;
+  --color-muted:    #6b7280;
+  --color-border:   rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --chart-grid:     rgba(255, 255, 255, 0.05);
+  --chart-tick:     #6b7280;
+  --scrollbar-track:  #13161d;
+  --scrollbar-thumb:  #2a2f3e;
+  --scrollbar-hover:  #3a4152;
+}
+
+[data-theme="light"] {
+  --color-bg:       #f2f4fb;
+  --color-surface:  #ffffff;
+  --color-surface2: #e8eaf4;
+  --color-text:     #0f1117;
+  --color-muted:    #64748b;
+  --color-border:   rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.14);
+  --chart-grid:     rgba(0, 0, 0, 0.06);
+  --chart-tick:     #94a3b8;
+  --scrollbar-track:  #e8eaf4;
+  --scrollbar-thumb:  #c4c9d8;
+  --scrollbar-hover:  #a0a8bc;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+
 :root {
   font-family: 'IBM Plex Sans', sans-serif;
   font-synthesis: none;
@@ -12,9 +47,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body, #root {
   height: 100%;
@@ -23,47 +56,73 @@ html, body, #root {
 }
 
 body {
-  background-color: #0d0f14;
-  color: #e8eaf0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family: 'IBM Plex Sans', sans-serif;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #13161d;
-}
-::-webkit-scrollbar-thumb {
-  background: #2a2f3e;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3a4152;
+/* ─── Border overrides for light mode ────────────────────────────────────────── */
+/* Tailwind generates classes like border-white/[0.07] which are hardcoded white.
+   In light mode we override them to use a dark-on-light color instead. */
+
+[data-theme="light"] [class*="border-white"],
+[data-theme="light"] [class*="divide-white"] {
+  border-color: var(--color-border) !important;
 }
 
-/* ─── Markdown renderer ───────────────────────────────────────────────────── */
-.prose-pxqa { color: #e8eaf0; font-size: 0.8125rem; line-height: 1.6; }
-.prose-pxqa h1, .prose-pxqa h2, .prose-pxqa h3 { font-weight: 600; margin: 0.75em 0 0.35em; color: #e8eaf0; }
+/* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb  { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* ─── Markdown renderer (dark) ───────────────────────────────────────────────── */
+
+.prose-pxqa {
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.prose-pxqa h1, .prose-pxqa h2, .prose-pxqa h3 {
+  font-weight: 600;
+  margin: 0.75em 0 0.35em;
+  color: var(--color-text);
+}
 .prose-pxqa h1 { font-size: 1.1rem; }
 .prose-pxqa h2 { font-size: 1rem; }
 .prose-pxqa h3 { font-size: 0.875rem; }
-.prose-pxqa p { margin: 0.35em 0; }
+.prose-pxqa p  { margin: 0.35em 0; }
 .prose-pxqa p:first-child { margin-top: 0; }
-.prose-pxqa p:last-child { margin-bottom: 0; }
+.prose-pxqa p:last-child  { margin-bottom: 0; }
 .prose-pxqa ul, .prose-pxqa ol { margin: 0.35em 0; padding-left: 1.4em; }
 .prose-pxqa li { margin: 0.15em 0; }
-.prose-pxqa strong { font-weight: 600; color: #e8eaf0; }
-.prose-pxqa em { font-style: italic; color: #b0b8cc; }
-.prose-pxqa code { font-family: 'IBM Plex Mono', monospace; font-size: 0.8em; background: #1a1e28; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; padding: 0.1em 0.4em; color: #22d3ee; }
-.prose-pxqa pre { background: #1a1e28; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.75em 1em; overflow-x: auto; margin: 0.5em 0; }
-.prose-pxqa pre code { background: none; border: none; padding: 0; font-size: 0.8rem; color: #e8eaf0; }
-.prose-pxqa blockquote { border-left: 3px solid #4f8ef7; margin: 0.5em 0; padding: 0.25em 0.75em; color: #6b7280; }
-.prose-pxqa hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 0.75em 0; }
+.prose-pxqa strong { font-weight: 600; color: var(--color-text); }
+.prose-pxqa em    { font-style: italic; color: var(--color-muted); }
+.prose-pxqa code  {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8em;
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  color: #22d3ee;
+}
+.prose-pxqa pre {
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.prose-pxqa pre code { background: none; border: none; padding: 0; font-size: 0.8rem; color: var(--color-text); }
+.prose-pxqa blockquote { border-left: 3px solid #4f8ef7; margin: 0.5em 0; padding: 0.25em 0.75em; color: var(--color-muted); }
+.prose-pxqa hr { border: none; border-top: 1px solid var(--color-border); margin: 0.75em 0; }
 .prose-pxqa table { width: 100%; border-collapse: collapse; margin: 0.5em 0; font-size: 0.8rem; }
-.prose-pxqa th { background: #1a1e28; padding: 0.4em 0.75em; text-align: left; font-weight: 600; border: 1px solid rgba(255,255,255,0.07); }
-.prose-pxqa td { padding: 0.35em 0.75em; border: 1px solid rgba(255,255,255,0.07); }
+.prose-pxqa th { background: var(--color-surface2); padding: 0.4em 0.75em; text-align: left; font-weight: 600; border: 1px solid var(--color-border); }
+.prose-pxqa td { padding: 0.35em 0.75em; border: 1px solid var(--color-border); }
 
 /* Amber variant for task notes */
 .prose-pxqa-amber { color: #fbbf24; }

@@ -4,18 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#0d0f14',
-        surface: '#13161d',
-        surface2: '#1a1e28',
-        border: 'rgba(255,255,255,0.07)',
-        text: '#e8eaf0',
-        muted: '#6b7280',
+        // Theme-aware — driven by CSS variables in index.css
+        bg:       'var(--color-bg)',
+        surface:  'var(--color-surface)',
+        surface2: 'var(--color-surface2)',
+        text:     'var(--color-text)',
+        muted:    'var(--color-muted)',
+        // Fixed accent colors (same in both themes)
         accent: '#4f8ef7',
-        green: '#34d399',
-        red: '#f87171',
-        amber: '#fbbf24',
+        green:  '#34d399',
+        red:    '#f87171',
+        amber:  '#fbbf24',
         purple: '#a78bfa',
-        cyan: '#22d3ee',
+        cyan:   '#22d3ee',
       },
       fontFamily: {
         sans: ['IBM Plex Sans', 'sans-serif'],
