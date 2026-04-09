@@ -14,12 +14,22 @@ export const defaultState: AppState = {
   settings: { userName: '', reportPeriodDays: 14 }
 }
 
+// When VITE_SUPABASE_URL is absent (Docker build), use the local API instead.
+const IS_LOCAL = !import.meta.env.VITE_SUPABASE_URL
+
 const BUCKET = 'screenshots'
 
-// ─── State persistence (Supabase) ────────────────────────────────────────────
+// ─── State persistence ────────────────────────────────────────────────────────
 
 export async function loadState(): Promise<AppState> {
   try {
+    if (IS_LOCAL) {
+      const res = await fetch('/api/state')
+      if (!res.ok) return defaultState
+      const data = await res.json()
+      return data ? { ...defaultState, ...data } : defaultState
+    }
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return defaultState
 
@@ -41,6 +51,15 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 export function saveState(state: AppState): void {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(async () => {
+    if (IS_LOCAL) {
+      await fetch('/api/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      })
+      return
+    }
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     await supabase
@@ -49,7 +68,7 @@ export function saveState(state: AppState): void {
   }, 800)
 }
 
-// ─── Image helpers (Supabase Storage) ────────────────────────────────────────
+// ─── Image helpers ────────────────────────────────────────────────────────────
 
 function dataURLToBlob(dataURL: string): Blob {
   const [header, base64] = dataURL.split(',')
@@ -61,6 +80,15 @@ function dataURLToBlob(dataURL: string): Blob {
 }
 
 export async function saveImage(key: string, dataURL: string): Promise<void> {
+  if (IS_LOCAL) {
+    await fetch(`/api/images/${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: dataURL }),
+    })
+    return
+  }
+
   const blob = dataURLToBlob(dataURL)
   const { error } = await supabase.storage.from(BUCKET).upload(key, blob, {
     upsert: true,
@@ -70,11 +98,21 @@ export async function saveImage(key: string, dataURL: string): Promise<void> {
 }
 
 export async function loadImage(key: string): Promise<string | null> {
+  if (IS_LOCAL) {
+    // Return URL served as binary by the backend
+    return `/api/images/${key}`
+  }
+
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(key)
   return data.publicUrl
 }
 
 export async function deleteImagesByPrefix(prefix: string): Promise<void> {
+  if (IS_LOCAL) {
+    await fetch(`/api/images?prefix=${encodeURIComponent(prefix)}`, { method: 'DELETE' })
+    return
+  }
+
   const { data } = await supabase.storage.from(BUCKET).list('', {
     search: prefix
   })

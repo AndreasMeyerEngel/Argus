@@ -2,6 +2,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+// When running locally (Docker), skip Supabase auth entirely.
+const IS_LOCAL = !import.meta.env.VITE_SUPABASE_URL
+
+// Minimal stub used as the "always-logged-in" user in local mode.
+const LOCAL_USER = { id: 'local' } as User
+
 interface AuthContextType {
   user: User | null
   loading: boolean
@@ -11,10 +17,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(IS_LOCAL ? LOCAL_USER : null)
+  const [loading, setLoading] = useState(!IS_LOCAL)
 
   useEffect(() => {
+    if (IS_LOCAL) return
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
@@ -28,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    if (!IS_LOCAL) await supabase.auth.signOut()
   }
 
   if (loading) {

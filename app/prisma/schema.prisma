@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AppState {
+  id   String @id @default("singleton")
+  data Json
+}
+
+model Image {
+  key  String @id
+  data String
+}
