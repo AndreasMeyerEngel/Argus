@@ -19,52 +19,73 @@ Sistema pessoal de gestão de QA — rastreie épicos, tarefas, cenários de tes
 - **Relatórios** — histórico de execuções por período
 - **Guided Run** — modo guiado de execução de testes passo a passo
 - **Backup** — exportar e importar dados em JSON
-- **Login** — autenticação com e-mail e senha via Supabase Auth
 
 ---
 
-## Stack
+## Modos de operação
 
-| Camada | Tecnologia |
-|---|---|
-| Framework | React 18 + TypeScript |
-| Build | Vite |
-| Estilo | Tailwind CSS |
-| Roteamento | React Router v6 |
-| Gráficos | Recharts |
-| Ícones | Lucide React |
-| Datas | date-fns |
-| Markdown | marked |
-| Banco de dados | Supabase (PostgreSQL) |
-| Armazenamento de arquivos | Supabase Storage |
-| Autenticação | Supabase Auth |
-| Hospedagem | Vercel |
+O Argus suporta dois ambientes, chaveados automaticamente pela presença da variável `VITE_SUPABASE_URL` no momento do build:
+
+| | Produção (Supabase) | Local (Docker) |
+|---|---|---|
+| Auth | Supabase Auth (e-mail/senha) | Sem autenticação |
+| Banco | Supabase PostgreSQL | PostgreSQL local |
+| Imagens | Supabase Storage | Armazenadas no banco (base64) |
+| Como rodar | `npm run dev` | `docker-compose up` |
 
 ---
 
-## Como rodar localmente
+## Rodar com Docker (modo local)
+
+**Pré-requisitos:** [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/)
+
+```bash
+docker-compose up --build
+```
+
+Acesse em `http://localhost:3000`.
+
+Na primeira execução, o build pode levar alguns minutos (instala dependências, compila frontend e backend). Nas execuções seguintes, o cache do Docker acelera o processo.
+
+Os dados são persistidos no volume `db_data` — mesmo que o container seja reiniciado, nada é perdido.
+
+### Como funciona internamente
+
+```
+docker-compose up
+      │
+      ├─ db (postgres:15)
+      │    └─ healthcheck: pg_isready
+      │
+      └─ argus (imagem multi-stage)
+           ├─ Stage 1: builda o React (sem VITE_SUPABASE_URL → modo local)
+           ├─ Stage 2: compila o backend TypeScript (Express + Prisma)
+           └─ Stage 3: produção
+                ├─ prisma db push  (cria/sincroniza tabelas)
+                └─ node dist/index.js
+                     ├─ GET/PUT /api/state     → estado da aplicação
+                     ├─ POST/GET /api/images/:key → screenshots
+                     └─ GET /*                 → arquivos estáticos do React
+```
+
+---
+
+## Rodar com Supabase (modo produção)
 
 **Pré-requisitos:** Node.js 18+, conta no [Supabase](https://supabase.com)
 
 ```bash
-# Instalar dependências
 npm install
-
-# Configurar variáveis de ambiente
 cp .env.example .env.local
 # Edite .env.local com suas chaves do Supabase
-
-# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
 O app estará disponível em `http://localhost:5173`.
 
----
+### Configuração do Supabase
 
-## Configuração do Supabase
-
-### 1. Criar tabela no SQL Editor
+**1. Criar tabela no SQL Editor**
 
 ```sql
 CREATE TABLE public.app_state (
@@ -81,13 +102,11 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 ```
 
-### 2. Criar bucket de imagens
+**2. Criar bucket de imagens**
 
-**Storage → New bucket:**
-- Name: `screenshots`
-- Public bucket: **ON**
+Storage → New bucket → Name: `screenshots` → Public bucket: **ON**
 
-### 3. Variáveis de ambiente
+**3. Variáveis de ambiente (`.env.local`)**
 
 ```env
 VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
@@ -96,51 +115,97 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-## Deploy (Vercel)
+## Desenvolvimento local com backend próprio
 
-1. Faça push para o GitHub
-2. Acesse [vercel.com](https://vercel.com) → New Project → importe `AndreasMeyerEngel/Argus`
-3. Adicione as variáveis de ambiente (`VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`)
-4. Clique em **Deploy**
+Para rodar o frontend em modo de desenvolvimento (`npm run dev`) apontando para o backend local sem Docker:
 
-A cada novo push na branch `main`, o Vercel faz deploy automático.
+```bash
+# Terminal 1 — backend
+cd app
+npm install
+npx prisma generate
+DATABASE_URL="postgresql://argus:argus123@localhost:5432/argus" npx tsx src/index.ts
+
+# Terminal 2 — frontend (sem .env.local → IS_LOCAL = true)
+# Renomeie ou remova .env.local para não usar Supabase
+npm run dev
+```
+
+O Vite está configurado para fazer proxy de `/api/*` para `http://localhost:3000`.
 
 ---
 
-## Build para produção
+## Stack
 
-```bash
-npm run build
-```
-
-Os arquivos gerados ficam na pasta `dist/`.
+| Camada | Tecnologia |
+|---|---|
+| Frontend | React 18 + TypeScript |
+| Build | Vite |
+| Estilo | Tailwind CSS |
+| Roteamento | React Router v6 |
+| Gráficos | Recharts |
+| Ícones | Lucide React |
+| Datas | date-fns |
+| Markdown | marked |
+| Backend (local) | Node.js + Express |
+| ORM (local) | Prisma |
+| Banco de dados | PostgreSQL (Supabase ou Docker) |
+| Armazenamento de arquivos | Supabase Storage ou banco (base64) |
+| Autenticação | Supabase Auth (produção) / sem auth (local) |
+| Hospedagem | Vercel |
 
 ---
 
 ## Estrutura do projeto
 
 ```
-src/
-├── components/
-│   ├── ui/            # Componentes reutilizáveis (Modal, Badge, Toast, etc.)
-│   └── Layout.tsx     # Sidebar, navegação e configurações
-├── context/
-│   ├── AppContext.tsx  # Estado global com useReducer
-│   └── AuthContext.tsx # Sessão do usuário via Supabase Auth
-├── lib/
-│   ├── supabase.ts    # Cliente Supabase
-│   └── storage.ts     # Leitura/escrita no banco e storage
-├── pages/
-│   ├── Login.tsx      # Tela de login e cadastro
-│   ├── Home.tsx       # Lista de épicos
-│   ├── Tarefas.tsx    # Tarefas avulsas (sem épico)
-│   ├── EpicPage.tsx   # Detalhe do épico (tarefas, cenários, bugs)
-│   ├── GuidedRun.tsx  # Execução guiada de testes
-│   ├── Dashboard.tsx  # Painel de indicadores
-│   └── Report.tsx     # Relatórios históricos
-└── types/
-    └── index.ts       # Interfaces TypeScript
+├── src/                        Frontend React
+│   ├── components/
+│   │   ├── ui/                 Componentes reutilizáveis (Modal, Badge, Toast…)
+│   │   └── Layout.tsx          Sidebar e navegação
+│   ├── context/
+│   │   ├── AppContext.tsx       Estado global com useReducer
+│   │   └── AuthContext.tsx      Sessão do usuário (Supabase ou stub local)
+│   ├── lib/
+│   │   ├── supabase.ts          Cliente Supabase
+│   │   └── storage.ts           Adapter: Supabase ou API local (/api/*)
+│   ├── pages/
+│   │   ├── Login.tsx            Tela de login (apenas modo Supabase)
+│   │   ├── Home.tsx             Lista de épicos
+│   │   ├── Tarefas.tsx          Tarefas avulsas
+│   │   ├── EpicPage.tsx         Detalhe do épico
+│   │   ├── GuidedRun.tsx        Execução guiada
+│   │   ├── Dashboard.tsx        Painel de indicadores
+│   │   └── Report.tsx           Relatórios históricos
+│   └── types/index.ts           Interfaces TypeScript
+│
+├── app/                        Backend (modo local/Docker)
+│   ├── prisma/
+│   │   └── schema.prisma        AppState + Image
+│   ├── src/
+│   │   └── index.ts             API Express + servidor de arquivos estáticos
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── Dockerfile                  Build multi-stage (React + backend)
+├── docker-compose.yml          Postgres + Argus
+└── .dockerignore
 ```
+
+---
+
+## Como o chaveamento Supabase ↔ local funciona
+
+Em `src/lib/storage.ts` e `src/context/AuthContext.tsx`:
+
+```ts
+const IS_LOCAL = !import.meta.env.VITE_SUPABASE_URL
+```
+
+- **Supabase** (`VITE_SUPABASE_URL` definido): usa `supabase.auth`, `supabase.from(…)` e `supabase.storage`
+- **Local** (variável ausente): usa `fetch('/api/state')` e `fetch('/api/images/:key')`
+
+No Docker, `.env*` é excluído via `.dockerignore`, então `VITE_SUPABASE_URL` nunca chega ao build — o modo local é ativado automaticamente.
 
 ---
 
@@ -148,13 +213,27 @@ src/
 
 ```
 Epic
- └── EpicTask (tarefas do épico)
-      └── TestScenario (cenários de teste)
-           └── TestExecution (execuções)
-           └── Bug (bugs vinculados)
+ └── EpicTask
+      └── TestScenario
+           ├── TestExecution (com screenshots)
+           └── Bug
 
 EpicTask (avulsa, sem épico)
 ```
+
+No modo Supabase, todo o estado é serializado como JSONB em uma única linha da tabela `app_state`.
+No modo local, o mesmo JSON é armazenado na tabela `AppState` do Postgres local via Prisma. Screenshots são salvas como base64 na tabela `Image`.
+
+---
+
+## Deploy (Vercel)
+
+1. Faça push para o GitHub
+2. Acesse [vercel.com](https://vercel.com) → New Project → importe o repositório
+3. Adicione as variáveis de ambiente (`VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`)
+4. Clique em **Deploy**
+
+A cada novo push na branch `main`, o Vercel faz deploy automático.
 
 ---
 
