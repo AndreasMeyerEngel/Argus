@@ -4,7 +4,7 @@ import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, Downlo
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { defaultState } from '../lib/storage'
+import { defaultState, loadImage, saveImage } from '../lib/storage'
 import { AppState } from '../types'
 import { Modal } from './ui/Modal'
 
@@ -15,6 +15,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
   const [importError, setImportError] = useState('')
   const [importMode, setImportMode] = useState<'file' | 'paste'>('file')
   const [pastedJson, setPastedJson] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const save = () => {
@@ -22,30 +24,78 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     onClose()
   }
 
-  const handleExport = () => {
-    const date = new Date().toISOString().slice(0, 10)
-    const json = JSON.stringify(state, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `argus-backup-${date}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+  // Convert any URL (relative or absolute) to base64 data URL
+  const urlToBase64 = async (url: string): Promise<string | null> => {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return null
+      const blob = await res.blob()
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    } catch { return null }
   }
 
-  const applyImport = (text: string) => {
-    setImportError('')
+  const handleExport = async () => {
+    setExporting(true)
     try {
-      const parsed = JSON.parse(text) as AppState
+      const date = new Date().toISOString().slice(0, 10)
+
+      // Collect all images referenced by executions
+      const images: Record<string, string> = {}
+      for (const scenario of state.scenarios) {
+        for (const exec of scenario.executions) {
+          for (let i = 0; i < exec.imgCount; i++) {
+            const key = `exec_${exec.id}_img_${i}`
+            const url = await loadImage(key)
+            if (url) {
+              const b64 = await urlToBase64(url)
+              if (b64) images[key] = b64
+            }
+          }
+        }
+      }
+
+      const backup = { ...state, __images__: images }
+      const json = JSON.stringify(backup, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const objUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objUrl
+      a.download = `argus-backup-${date}.json`
+      a.click()
+      URL.revokeObjectURL(objUrl)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const applyImport = async (text: string) => {
+    setImportError('')
+    setImporting(true)
+    try {
+      const parsed = JSON.parse(text) as AppState & { __images__?: Record<string, string> }
       if (!parsed.epics || !parsed.scenarios || !parsed.bugs) {
         setImportError('JSON inválido — não parece ser um backup do Argus.')
         return
       }
-      dispatch({ type: 'SET_STATE', payload: { ...defaultState, ...parsed } })
+      const { __images__, ...stateData } = parsed
+      dispatch({ type: 'SET_STATE', payload: { ...defaultState, ...stateData } })
+
+      // Restore images if present
+      if (__images__ && Object.keys(__images__).length > 0) {
+        for (const [key, base64] of Object.entries(__images__)) {
+          await saveImage(key, base64)
+        }
+      }
       onClose()
     } catch {
       setImportError('JSON inválido. Verifique a sintaxe e tente novamente.')
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -98,10 +148,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
+            disabled={exporting}
+            className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors disabled:opacity-60 disabled:cursor-wait"
           >
             <Download size={14} className="text-accent" />
-            Exportar backup (.json)
+            {exporting ? 'Exportando imagens...' : 'Exportar backup (.json)'}
           </button>
 
           {/* Import tabs */}
@@ -119,10 +170,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
               <>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors"
+                  disabled={importing}
+                  className="flex items-center gap-2 w-full px-3 py-2 bg-surface2 border border-white/[0.07] rounded-lg text-sm text-text hover:border-accent/40 transition-colors disabled:opacity-60 disabled:cursor-wait"
                 >
                   <Upload size={14} className="text-accent" />
-                  Selecionar arquivo .json
+                  {importing ? 'Importando imagens...' : 'Selecionar arquivo .json'}
                 </button>
                 <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileImport} />
               </>
@@ -137,11 +189,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
                 />
                 <button
                   onClick={() => applyImport(pastedJson)}
-                  disabled={!pastedJson.trim()}
+                  disabled={!pastedJson.trim() || importing}
                   className="flex items-center justify-center gap-2 w-full py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ClipboardPaste size={14} />
-                  Importar JSON colado
+                  {importing ? 'Importando imagens...' : 'Importar JSON colado'}
                 </button>
               </div>
             )}
