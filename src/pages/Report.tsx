@@ -310,34 +310,91 @@ export default function Report() {
   // ── Export HTML ───────────────────────────────────────────────────────────
 
   const exportHTML = () => {
+    // ── Compute chart data ──────────────────────────────────────────────────
+    const scenarioResults = { passed: 0, failed: 0, blocked: 0, partial: 0 }
+    executedInPeriod.forEach(s => {
+      const lastExec = [...s.executions]
+        .filter(e => inPeriod(e.date, periodStart, periodEnd))
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .pop()
+      if (lastExec && lastExec.result in scenarioResults)
+        (scenarioResults as Record<string, number>)[lastExec.result]++
+    })
+
+    const bugSevCounts = { critical: 0, high: 0, medium: 0, low: 0 }
+    currentBugsOpened.forEach(b => (bugSevCounts as Record<string, number>)[b.severity]++)
+
+    const bugStatusCounts: Record<string, number> = {}
+    state.bugs.forEach(b => { bugStatusCounts[b.status] = (bugStatusCounts[b.status] || 0) + 1 })
+
+    const epicNames  = coverageByEpic.map(c => c.epic.name.replace(/"/g, '\\"'))
+    const epicPassed = coverageByEpic.map(c => {
+      const scenarios = state.scenarios.filter(s => s.epicId === c.epic.id)
+      return scenarios.filter(s => s.status === 'passed').length
+    })
+    const epicFailed = coverageByEpic.map(c => {
+      const scenarios = state.scenarios.filter(s => s.epicId === c.epic.id)
+      return scenarios.filter(s => ['failed', 'blocked'].includes(s.status)).length
+    })
+    const epicPending = coverageByEpic.map(c => {
+      const scenarios = state.scenarios.filter(s => s.epicId === c.epic.id)
+      return scenarios.filter(s => s.status === 'pending').length
+    })
+
     const rows = coverageByEpic.map(c =>
       `<tr><td>${c.epic.name}</td><td>${c.total}</td><td>${c.executed}</td><td>${c.coverage}%</td><td>${c.openBugs}</td></tr>`
     ).join('')
+
+    const statusLabels: Record<string, string> = {
+      open: 'Aberto', in_progress: 'Em andamento', resolved: 'Resolvido',
+      closed: 'Fechado', reopened: 'Reaberto'
+    }
+    const statusColors: Record<string, string> = {
+      open: '#34d399', in_progress: '#4f8ef7', resolved: '#34d399',
+      closed: '#9ca3af', reopened: '#f87171'
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <title>Relatório PX/QA — ${fmt(periodStart)} a ${fmt(periodEnd)}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  body { font-family: sans-serif; max-width: 900px; margin: 40px auto; color: #1a1a2e; }
-  h1 { color: #4f8ef7; } h2 { border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
-  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-  th { background: #f5f5f5; padding: 10px; text-align: left; font-size: 13px; }
-  td { padding: 9px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0; }
-  .kpi-card { background: #f8faff; border: 1px solid #dde7ff; border-radius: 8px; padding: 16px; }
-  .kpi-value { font-size: 28px; font-weight: 700; color: #4f8ef7; }
-  .kpi-label { font-size: 13px; color: #666; margin-top: 4px; }
-  .rec { background: #fff8e1; border-left: 4px solid #fbbf24; padding: 12px; margin: 8px 0; border-radius: 4px; font-size: 14px; }
-  p { line-height: 1.6; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1000px; margin: 40px auto; color: #1a1a2e; padding: 0 20px; background: #f9fafb; }
+  h1 { color: #4f8ef7; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 32px; }
+  h2 { border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-top: 40px; font-size: 18px; color: #111; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  th { background: #f3f4f6; padding: 11px 14px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
+  .kpi-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .kpi-value { font-size: 30px; font-weight: 800; color: #4f8ef7; line-height: 1; }
+  .kpi-label { font-size: 12px; color: #777; margin-top: 6px; }
+  .rec { background: #fffbeb; border-left: 4px solid #fbbf24; padding: 12px 16px; margin: 8px 0; border-radius: 4px; font-size: 13px; line-height: 1.6; }
+  p { line-height: 1.7; color: #374151; }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+  .chart-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .chart-card h3 { font-size: 13px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 16px; }
+  .chart-card-full { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin: 24px 0; }
+  .chart-card-full h3 { font-size: 13px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 16px; }
+  .sev-critical { color: #f87171; font-weight: 600; }
+  .sev-high { color: #fbbf24; font-weight: 600; }
+  .sev-medium { color: #a78bfa; font-weight: 600; }
+  .sev-low { color: #34d399; font-weight: 600; }
+  footer { margin-top: 48px; color: #aaa; font-size: 12px; text-align: center; border-top: 1px solid #eee; padding-top: 16px; }
 </style>
 </head>
 <body>
 <h1>Relatório PX/QA</h1>
-<p><strong>Período:</strong> ${fmt(periodStart)} a ${fmt(periodEnd)}</p>
+<p class="subtitle"><strong>Período:</strong> ${fmt(periodStart)} a ${fmt(periodEnd)}</p>
+
 <h2>Resumo Executivo</h2>
 <p>${executiveSummary}</p>
+
 <div class="kpi">
   <div class="kpi-card"><div class="kpi-value">${executedInPeriod.length}</div><div class="kpi-label">Cenários executados</div></div>
   <div class="kpi-card"><div class="kpi-value">${successRate}%</div><div class="kpi-label">Taxa de sucesso</div></div>
@@ -346,15 +403,118 @@ export default function Report() {
   <div class="kpi-card"><div class="kpi-value">${reopenRate}%</div><div class="kpi-label">Taxa de reabertura</div></div>
   <div class="kpi-card"><div class="kpi-value">${avgResolutionCurrent}d</div><div class="kpi-label">Tempo médio de resolução</div></div>
 </div>
+
+<h2>Dashboards</h2>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <h3>Resultados dos Cenários</h3>
+    <canvas id="chartResults" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>Bugs Abertos por Severidade</h3>
+    <canvas id="chartBugSev" height="220"></canvas>
+  </div>
+</div>
+
+<div class="chart-card-full">
+  <h3>Cobertura por Épico</h3>
+  <canvas id="chartEpics" height="120"></canvas>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <h3>Distribuição de Status dos Bugs</h3>
+    <canvas id="chartBugStatus" height="220"></canvas>
+  </div>
+  <div class="chart-card" style="display:flex;flex-direction:column;justify-content:center;">
+    <h3>Legenda de Criticidade</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f87171"></span><span style="font-size:13px;">Crítico — ${bugSevCounts.critical} bugs</span></div>
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#fbbf24"></span><span style="font-size:13px;">Alto — ${bugSevCounts.high} bugs</span></div>
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#a78bfa"></span><span style="font-size:13px;">Médio — ${bugSevCounts.medium} bugs</span></div>
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#34d399"></span><span style="font-size:13px;">Baixo — ${bugSevCounts.low} bugs</span></div>
+    </div>
+  </div>
+</div>
+
 <h2>Top Bugs do Período</h2>
-<table><tr><th>ID</th><th>Título</th><th>Área</th><th>Severidade</th><th>Status</th><th>Dias em aberto</th></tr>
-${topBugs.map(b => `<tr><td>#${b.id}</td><td>${b.title}</td><td>${b.area}</td><td>${b.severity}</td><td>${b.status}</td><td>${differenceInDays(new Date(), new Date(b.openedAt))}</td></tr>`).join('')}
+<table>
+  <tr><th>ID</th><th>Título</th><th>Área</th><th>Severidade</th><th>Status</th><th>Dias em aberto</th></tr>
+  ${topBugs.map(b => `<tr><td>#${b.id}</td><td>${b.title}</td><td>${b.area || '—'}</td><td class="sev-${b.severity}">${b.severity}</td><td>${statusLabels[b.status] ?? b.status}</td><td>${differenceInDays(new Date(), new Date(b.openedAt))}</td></tr>`).join('')}
 </table>
+
 <h2>Cobertura por Épico</h2>
-<table><tr><th>Épico</th><th>Total</th><th>Executados</th><th>Cobertura</th><th>Bugs abertos</th></tr>${rows}</table>
+<table>
+  <tr><th>Épico</th><th>Total</th><th>Executados</th><th>Cobertura</th><th>Bugs abertos</th></tr>
+  ${rows}
+</table>
+
 <h2>Recomendações</h2>
 ${recommendations.map(r => `<div class="rec">${r}</div>`).join('')}
-<footer style="margin-top:40px;color:#999;font-size:12px">Gerado por PX/QA em ${fmt(new Date())}</footer>
+
+<footer>Gerado por Argus em ${fmt(new Date())}</footer>
+
+<script>
+const COLORS = { passed:'#34d399', failed:'#f87171', blocked:'#fbbf24', partial:'#4f8ef7' }
+
+// 1. Resultados dos cenários
+new Chart(document.getElementById('chartResults'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Aprovado','Falhou','Bloqueado','Parcial'],
+    datasets: [{ data: [${scenarioResults.passed},${scenarioResults.failed},${scenarioResults.blocked},${scenarioResults.partial}], backgroundColor: ['#34d399','#f87171','#fbbf24','#4f8ef7'], borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } } }, cutout: '62%' }
+})
+
+// 2. Bugs por severidade
+new Chart(document.getElementById('chartBugSev'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Crítico','Alto','Médio','Baixo'],
+    datasets: [{ data: [${bugSevCounts.critical},${bugSevCounts.high},${bugSevCounts.medium},${bugSevCounts.low}], backgroundColor: ['#f87171','#fbbf24','#a78bfa','#34d399'], borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } } }, cutout: '62%' }
+})
+
+// 3. Cobertura por épico
+new Chart(document.getElementById('chartEpics'), {
+  type: 'bar',
+  data: {
+    labels: ${JSON.stringify(epicNames)},
+    datasets: [
+      { label: 'Aprovados', data: ${JSON.stringify(epicPassed)}, backgroundColor: '#34d399', borderRadius: 4 },
+      { label: 'Falhou/Bloqueado', data: ${JSON.stringify(epicFailed)}, backgroundColor: '#f87171', borderRadius: 4 },
+      { label: 'Pendentes', data: ${JSON.stringify(epicPending)}, backgroundColor: '#e5e7eb', borderRadius: 4 }
+    ]
+  },
+  options: {
+    plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } } },
+    scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+    responsive: true
+  }
+})
+
+// 4. Status dos bugs
+const bugStatuses = ${JSON.stringify(Object.keys(bugStatusCounts))}
+const bugStatusVals = ${JSON.stringify(Object.values(bugStatusCounts))}
+const bugStatusColors = ${JSON.stringify(Object.keys(bugStatusCounts).map(k => statusColors[k] ?? '#9ca3af'))}
+const bugStatusLabels = ${JSON.stringify(Object.keys(bugStatusCounts).map(k => statusLabels[k] ?? k))}
+new Chart(document.getElementById('chartBugStatus'), {
+  type: 'bar',
+  data: {
+    labels: bugStatusLabels,
+    datasets: [{ data: bugStatusVals, backgroundColor: bugStatusColors, borderRadius: 6, borderSkipped: false }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } },
+    responsive: true
+  }
+})
+</script>
 </body></html>`
 
     const blob = new Blob([html], { type: 'text/html' })
