@@ -12,6 +12,7 @@ import GuidedRun from './pages/GuidedRun'
 import Report from './pages/Report'
 import Tarefas from './pages/Tarefas'
 import Traceability from './pages/Traceability'
+import History from './pages/History'
 import Login from './pages/Login'
 
 function AppRoutes() {
@@ -27,6 +28,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/report" element={<Layout><Report /></Layout>} />
         <Route path="/traceability" element={<Layout><Traceability /></Layout>} />
+        <Route path="/history" element={<Layout><History /></Layout>} />
         <Route path="/epic/:id" element={<Layout><EpicPage /></Layout>} />
         <Route path="/epic/:id/run" element={<GuidedRun />} />
       </Routes>

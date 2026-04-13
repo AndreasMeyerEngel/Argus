@@ -108,6 +108,7 @@ export default function GuidedRun() {
           linkedScenarios: [currentScenario.id],
           responsible: state.settings.userName || '',
           observations: bugObs,
+          comments: [],
           openedAt: new Date().toISOString(),
           reopenCount: 0
         }

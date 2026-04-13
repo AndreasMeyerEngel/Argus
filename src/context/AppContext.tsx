@@ -1,6 +1,17 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react'
-import { AppState, Epic, EpicTask, TestScenario, Bug, TestExecution } from '../types'
+import { AppState, Epic, EpicTask, TestScenario, Bug, TestExecution, HistoryEntry, Comment } from '../types'
 import { loadState, saveState, defaultState } from '../lib/storage'
+
+// ─── History helper ───────────────────────────────────────────────────────────
+
+function pushHistory(state: AppState, entry: Omit<HistoryEntry, 'id'>): AppState {
+  const id = String(state.nextHistoryId ?? 1).padStart(6, '0')
+  return {
+    ...state,
+    history: [...(state.history ?? []), { ...entry, id }],
+    nextHistoryId: (state.nextHistoryId ?? 1) + 1,
+  }
+}
 
 type Action =
   | { type: 'SET_STATE'; payload: AppState }
@@ -21,6 +32,8 @@ type Action =
   | { type: 'UPDATE_EXECUTION'; payload: { scenarioId: string; execution: TestExecution } }
   | { type: 'DELETE_EXECUTION'; payload: { scenarioId: string; execId: string } }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppState['settings']> }
+  | { type: 'ADD_COMMENT'; payload: { entityType: 'scenario' | 'bug'; entityId: string; comment: Comment } }
+  | { type: 'DELETE_COMMENT'; payload: { entityType: 'scenario' | 'bug'; entityId: string; commentId: string } }
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -34,11 +47,20 @@ function reducer(state: AppState, action: Action): AppState {
         nextEpicId: state.nextEpicId + 1
       }
 
-    case 'UPDATE_EPIC':
-      return {
-        ...state,
-        epics: state.epics.map(e => e.id === action.payload.id ? action.payload : e)
+    case 'UPDATE_EPIC': {
+      const prev = state.epics.find(e => e.id === action.payload.id)
+      let next: AppState = { ...state, epics: state.epics.map(e => e.id === action.payload.id ? action.payload : e) }
+      if (prev && prev.status !== action.payload.status) {
+        next = pushHistory(next, {
+          timestamp: new Date().toISOString(),
+          entityType: 'epic', action: 'status_changed',
+          entityId: action.payload.id, entityTitle: action.payload.name,
+          epicId: action.payload.id,
+          from: prev.status, to: action.payload.status,
+        })
       }
+      return next
+    }
 
     case 'DELETE_EPIC':
       return {
@@ -89,18 +111,33 @@ function reducer(state: AppState, action: Action): AppState {
         scenarios: state.scenarios.map(s => s.taskId === action.payload ? { ...s, taskId: undefined } : s)
       }
 
-    case 'ADD_SCENARIO':
-      return {
-        ...state,
-        scenarios: [...state.scenarios, action.payload],
-        nextScenarioId: state.nextScenarioId + 1
-      }
+    case 'ADD_SCENARIO': {
+      const s = action.payload
+      const next: AppState = { ...state, scenarios: [...state.scenarios, s], nextScenarioId: state.nextScenarioId + 1 }
+      return pushHistory(next, {
+        timestamp: s.createdAt,
+        entityType: 'scenario', action: 'created',
+        entityId: s.id, entityTitle: s.title,
+        epicId: s.epicId,
+        actor: s.responsible,
+      })
+    }
 
-    case 'UPDATE_SCENARIO':
-      return {
-        ...state,
-        scenarios: state.scenarios.map(s => s.id === action.payload.id ? action.payload : s)
+    case 'UPDATE_SCENARIO': {
+      const prev = state.scenarios.find(s => s.id === action.payload.id)
+      let next: AppState = { ...state, scenarios: state.scenarios.map(s => s.id === action.payload.id ? action.payload : s) }
+      if (prev && prev.status !== action.payload.status) {
+        next = pushHistory(next, {
+          timestamp: action.payload.updatedAt ?? new Date().toISOString(),
+          entityType: 'scenario', action: 'status_changed',
+          entityId: action.payload.id, entityTitle: action.payload.title,
+          epicId: action.payload.epicId,
+          from: prev.status, to: action.payload.status,
+          actor: action.payload.responsible,
+        })
       }
+      return next
+    }
 
     case 'DELETE_SCENARIO':
       return {
@@ -108,18 +145,34 @@ function reducer(state: AppState, action: Action): AppState {
         scenarios: state.scenarios.filter(s => s.id !== action.payload)
       }
 
-    case 'ADD_BUG':
-      return {
-        ...state,
-        bugs: [...state.bugs, action.payload],
-        nextBugId: state.nextBugId + 1
-      }
+    case 'ADD_BUG': {
+      const b = action.payload
+      const next: AppState = { ...state, bugs: [...state.bugs, b], nextBugId: state.nextBugId + 1 }
+      return pushHistory(next, {
+        timestamp: b.openedAt,
+        entityType: 'bug', action: 'created',
+        entityId: b.id, entityTitle: b.title,
+        epicId: b.epicId,
+        to: b.status,
+        actor: b.responsible,
+      })
+    }
 
-    case 'UPDATE_BUG':
-      return {
-        ...state,
-        bugs: state.bugs.map(b => b.id === action.payload.id ? action.payload : b)
+    case 'UPDATE_BUG': {
+      const prev = state.bugs.find(b => b.id === action.payload.id)
+      let next: AppState = { ...state, bugs: state.bugs.map(b => b.id === action.payload.id ? action.payload : b) }
+      if (prev && prev.status !== action.payload.status) {
+        next = pushHistory(next, {
+          timestamp: new Date().toISOString(),
+          entityType: 'bug', action: 'status_changed',
+          entityId: action.payload.id, entityTitle: action.payload.title,
+          epicId: action.payload.epicId,
+          from: prev.status, to: action.payload.status,
+          actor: action.payload.responsible,
+        })
       }
+      return next
+    }
 
     case 'DELETE_BUG':
       return {
@@ -132,19 +185,27 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'ADD_EXECUTION': {
       const { scenarioId, execution } = action.payload
-      return {
+      const scenario = state.scenarios.find(s => s.id === scenarioId)
+      let next: AppState = {
         ...state,
         scenarios: state.scenarios.map(s => {
           if (s.id !== scenarioId) return s
-          return {
-            ...s,
-            executions: [...s.executions, execution],
-            status: execution.result,
-            updatedAt: new Date().toISOString()
-          }
+          return { ...s, executions: [...s.executions, execution], status: execution.result, updatedAt: new Date().toISOString() }
         }),
-        nextExecId: state.nextExecId + 1
+        nextExecId: state.nextExecId + 1,
       }
+      if (scenario) {
+        next = pushHistory(next, {
+          timestamp: execution.date,
+          entityType: 'scenario', action: 'executed',
+          entityId: scenarioId, entityTitle: scenario.title,
+          epicId: scenario.epicId,
+          to: execution.result,
+          actor: execution.executedBy,
+          notes: execution.notes || undefined,
+        })
+      }
+      return next
     }
 
     case 'UPDATE_EXECUTION': {
@@ -188,6 +249,42 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         settings: { ...state.settings, ...action.payload }
       }
+
+    case 'ADD_COMMENT': {
+      const { entityType, entityId, comment } = action.payload
+      if (entityType === 'scenario') {
+        return {
+          ...state,
+          scenarios: state.scenarios.map(s =>
+            s.id === entityId ? { ...s, comments: [...(s.comments ?? []), comment] } : s
+          )
+        }
+      }
+      return {
+        ...state,
+        bugs: state.bugs.map(b =>
+          b.id === entityId ? { ...b, comments: [...(b.comments ?? []), comment] } : b
+        )
+      }
+    }
+
+    case 'DELETE_COMMENT': {
+      const { entityType, entityId, commentId } = action.payload
+      if (entityType === 'scenario') {
+        return {
+          ...state,
+          scenarios: state.scenarios.map(s =>
+            s.id === entityId ? { ...s, comments: (s.comments ?? []).filter(c => c.id !== commentId) } : s
+          )
+        }
+      }
+      return {
+        ...state,
+        bugs: state.bugs.map(b =>
+          b.id === entityId ? { ...b, comments: (b.comments ?? []).filter(c => c.id !== commentId) } : b
+        )
+      }
+    }
 
     default:
       return state

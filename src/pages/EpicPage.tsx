@@ -8,10 +8,10 @@ import {
 import {
   Plus, Search, ChevronDown, ChevronRight, Play, Trash2, Edit2, Bug, Link,
   CheckSquare, Image as ImageIcon, AlertCircle, GripVertical, X, Save, ArrowUp, ArrowDown,
-  FileText, Copy, Check
+  FileText, Copy, Check, MessageSquare, Send
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { Epic, TestScenario, TestStep, Bug as BugType, TestExecution } from '../types'
+import { Epic, TestScenario, TestStep, Bug as BugType, TestExecution, Comment } from '../types'
 import { ScenarioStatusBadge, BugSeverityBadge, BugStatusBadge, PriorityBadge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -59,7 +59,7 @@ function ScenarioFormModal({ epicId, scenario, defaultTaskId, defaultBugId, onCl
         title, area, criticality, responsible, notes,
         status: 'pending', isSensitive: false,
         preconditions: [], testData: '', acceptanceCriteria: '',
-        steps: [], linkedBugs: [], executions: [],
+        steps: [], linkedBugs: [], executions: [], comments: [],
         createdAt: now, updatedAt: now
       }
       dispatch({ type: 'ADD_SCENARIO', payload: newScenario })
@@ -168,7 +168,7 @@ function BugFormModal({ epicId, bug, linkedScenarioId, onClose }: BugFormProps) 
       dispatch({
         type: 'ADD_BUG', payload: {
           id, epicId, title, area, severity, status, reproduction, responsible, observations, linkedScenarios,
-          openedAt: now, reopenCount: 0
+          comments: [], openedAt: now, reopenCount: 0
         }
       })
       // link to scenarios
@@ -694,7 +694,7 @@ function ExecTab({ scenario, execImages, setExecImages, lightbox, setLightbox, s
 function ScenarioDetailTabs({ scenario }: { scenario: TestScenario }) {
   const { state, dispatch } = useApp()
   const toast = useToast()
-  const [activeTab, setActiveTab] = useState<'details' | 'exec' | 'bugs'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'exec' | 'bugs' | 'comments'>('details')
   const [showExecPanel, setShowExecPanel] = useState(false)
   const [showBugForm, setShowBugForm] = useState(false)
   const [editingBugId, setEditingBugId] = useState<string | null>(null)
@@ -791,6 +791,9 @@ function ScenarioDetailTabs({ scenario }: { scenario: TestScenario }) {
         </button>
         <button className={tabCls('bugs')} onClick={() => setActiveTab('bugs')}>
           Bugs Vinculados ({linkedBugs.length})
+        </button>
+        <button className={tabCls('comments')} onClick={() => setActiveTab('comments')}>
+          Comentários ({(scenario.comments ?? []).length})
         </button>
       </div>
 
@@ -971,6 +974,15 @@ function ScenarioDetailTabs({ scenario }: { scenario: TestScenario }) {
         </div>
       )}
 
+      {/* Comments Tab */}
+      {activeTab === 'comments' && (
+        <CommentsSection
+          comments={scenario.comments ?? []}
+          entityType="scenario"
+          entityId={scenario.id}
+        />
+      )}
+
       {showBugForm && (
         <BugFormModal
           epicId={scenario.epicId}
@@ -978,6 +990,97 @@ function ScenarioDetailTabs({ scenario }: { scenario: TestScenario }) {
           onClose={() => setShowBugForm(false)}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Comments Section ─────────────────────────────────────────────────────────
+
+function CommentsSection({
+  comments,
+  entityType,
+  entityId,
+}: {
+  comments: Comment[]
+  entityType: 'scenario' | 'bug'
+  entityId: string
+}) {
+  const { state, dispatch } = useApp()
+  const [text, setText] = useState('')
+
+  const submit = () => {
+    if (!text.trim()) return
+    const comment: Comment = {
+      id: String(Date.now()),
+      text: text.trim(),
+      author: state.settings.userName || 'Anônimo',
+      createdAt: new Date().toISOString(),
+    }
+    dispatch({ type: 'ADD_COMMENT', payload: { entityType, entityId, comment } })
+    setText('')
+  }
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit()
+  }
+
+  const deleteComment = (commentId: string) => {
+    dispatch({ type: 'DELETE_COMMENT', payload: { entityType, entityId, commentId } })
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <MessageSquare size={12} /> Comentários ({comments.length})
+      </p>
+
+      {/* Existing comments */}
+      {comments.length > 0 && (
+        <div className="flex flex-col gap-3 mb-4">
+          {comments.map(c => (
+            <div key={c.id} className="group flex gap-3">
+              <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-accent">{(c.author?.[0] ?? '?').toUpperCase()}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-text">{c.author}</span>
+                  <span className="text-xs text-muted">
+                    {format(new Date(c.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </span>
+                  <button
+                    onClick={() => deleteComment(c.id)}
+                    className="ml-auto text-muted hover:text-red opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <p className="text-sm text-text/90 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* New comment input */}
+      <div className="flex gap-2 items-end">
+        <textarea
+          className="flex-1 bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent resize-none"
+          placeholder="Adicionar comentário... (Ctrl+Enter para enviar)"
+          rows={2}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={handleKey}
+        />
+        <button
+          onClick={submit}
+          disabled={!text.trim()}
+          className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/80 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+        >
+          <Send size={13} /> Enviar
+        </button>
+      </div>
+      <p className="text-xs text-muted mt-1">Ctrl+Enter para enviar</p>
     </div>
   )
 }
@@ -1758,6 +1861,15 @@ function BugRow({
                 <Markdown content={bug.observations} className="prose-pxqa" />
               </div>
             )}
+
+            {/* Comments */}
+            <div className="mb-5">
+              <CommentsSection
+                comments={bug.comments ?? []}
+                entityType="bug"
+                entityId={bug.id}
+              />
+            </div>
 
             {/* Verification Scenarios */}
             <div>

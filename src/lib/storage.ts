@@ -11,6 +11,8 @@ export const defaultState: AppState = {
   nextScenarioId: 1,
   nextBugId: 1,
   nextExecId: 1,
+  nextHistoryId: 1,
+  history: [],
   settings: { userName: '', reportPeriodDays: 14 }
 }
 

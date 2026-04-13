@@ -1,3 +1,10 @@
+export interface Comment {
+  id: string
+  text: string
+  author: string
+  createdAt: string
+}
+
 export interface TestStep {
   id: string
   order: number
@@ -42,6 +49,7 @@ export interface TestScenario {
   steps: TestStep[]
   linkedBugs: string[]
   executions: TestExecution[]
+  comments: Comment[]
   responsible: string
   notes: string
   createdAt: string
@@ -73,6 +81,7 @@ export interface Bug {
   linkedScenarios: string[]
   responsible: string
   observations: string
+  comments: Comment[]
   openedAt: string
   resolvedAt?: string
   reopenedAt?: string
@@ -80,16 +89,32 @@ export interface Bug {
   epicName?: string
 }
 
+export interface HistoryEntry {
+  id: string
+  timestamp: string
+  entityType: 'scenario' | 'bug' | 'epic'
+  action: 'created' | 'status_changed' | 'executed' | 'deleted'
+  entityId: string
+  entityTitle: string
+  epicId: string
+  from?: string
+  to?: string
+  actor?: string
+  notes?: string
+}
+
 export interface AppState {
   epics: Epic[]
   tasks: EpicTask[]
   scenarios: TestScenario[]
   bugs: Bug[]
+  history: HistoryEntry[]
   nextEpicId: number
   nextTaskId: number
   nextScenarioId: number
   nextBugId: number
   nextExecId: number
+  nextHistoryId: number
   settings: {
     userName: string
     reportPeriodDays: number
