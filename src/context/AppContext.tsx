@@ -124,7 +124,10 @@ function reducer(state: AppState, action: Action): AppState {
     case 'DELETE_BUG':
       return {
         ...state,
-        bugs: state.bugs.filter(b => b.id !== action.payload)
+        bugs: state.bugs.filter(b => b.id !== action.payload),
+        scenarios: state.scenarios.map(s =>
+          s.bugId === action.payload ? { ...s, bugId: undefined } : s
+        )
       }
 
     case 'ADD_EXECUTION': {

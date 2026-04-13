@@ -147,6 +147,31 @@ export default function Dashboard() {
     return Object.entries(map).map(([area, counts]) => ({ area, ...counts })).slice(0, 8)
   }, [filteredBugs])
 
+  // ── Closed bugs by severity ────────────────────────────────────────────────
+  const closedBugsBySeverity = useMemo(() => {
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 }
+    filteredBugs.filter(b => ['resolved', 'closed'].includes(b.status)).forEach(b => {
+      counts[b.severity]++
+    })
+    return [
+      { name: 'Crítico', value: counts.critical, color: COLORS.critical },
+      { name: 'Alto',    value: counts.high,     color: COLORS.high },
+      { name: 'Médio',   value: counts.medium,   color: COLORS.medium },
+      { name: 'Baixo',   value: counts.low,      color: COLORS.low },
+    ].filter(d => d.value > 0)
+  }, [filteredBugs])
+
+  // ── Closed bugs by area ─────────────────────────────────────────────────────
+  const closedBugsByArea = useMemo(() => {
+    const map: Record<string, { critical: number; high: number; medium: number; low: number }> = {}
+    filteredBugs.filter(b => ['resolved', 'closed'].includes(b.status)).forEach(b => {
+      const area = b.area || 'Sem área'
+      if (!map[area]) map[area] = { critical: 0, high: 0, medium: 0, low: 0 }
+      map[area][b.severity]++
+    })
+    return Object.entries(map).map(([area, counts]) => ({ area, ...counts })).slice(0, 8)
+  }, [filteredBugs])
+
   // ── Execution velocity ──────────────────────────────────────────────────────
   const execVelocity = useMemo(() => {
     const windowStart = mode === 'period' ? periodStart : subDays(new Date(), 13)
@@ -349,6 +374,45 @@ export default function Dashboard() {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={bugsByArea} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis type="number" tick={{ fill: tickColor, fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis dataKey="area" type="category" tick={{ fill: tickColor, fontSize: 10 }} tickLine={false} axisLine={false} width={80} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: '11px' }} />
+                <Bar dataKey="critical" stackId="a" fill={COLORS.critical} name="Crítico" />
+                <Bar dataKey="high"     stackId="a" fill={COLORS.high}     name="Alto" />
+                <Bar dataKey="medium"   stackId="a" fill={COLORS.medium}   name="Médio" />
+                <Bar dataKey="low"      stackId="a" fill={COLORS.low}      name="Baixo" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Closed bugs by severity */}
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-text mb-4">Bugs Fechados por Severidade</h2>
+          {closedBugsBySeverity.length === 0 ? (
+            <div className="flex items-center justify-center h-[200px] text-muted text-sm">Nenhum bug fechado</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={closedBugsBySeverity} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
+                  {closedBugsBySeverity.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Closed bugs by area */}
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-text mb-4">Bugs Fechados por Área</h2>
+          {closedBugsByArea.length === 0 ? (
+            <div className="flex items-center justify-center h-[200px] text-muted text-sm">Nenhum bug fechado</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={closedBugsByArea} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                 <XAxis type="number" tick={{ fill: tickColor, fontSize: 10 }} tickLine={false} axisLine={false} />
                 <YAxis dataKey="area" type="category" tick={{ fill: tickColor, fontSize: 10 }} tickLine={false} axisLine={false} width={80} />

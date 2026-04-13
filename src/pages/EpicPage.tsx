@@ -26,10 +26,11 @@ interface ScenarioFormProps {
   epicId: string
   scenario?: TestScenario
   defaultTaskId?: string
+  defaultBugId?: string
   onClose: () => void
 }
 
-function ScenarioFormModal({ epicId, scenario, defaultTaskId, onClose }: ScenarioFormProps) {
+function ScenarioFormModal({ epicId, scenario, defaultTaskId, defaultBugId, onClose }: ScenarioFormProps) {
   const { state, dispatch } = useApp()
   const toast = useToast()
   const [title, setTitle] = useState(scenario?.title || '')
@@ -38,6 +39,7 @@ function ScenarioFormModal({ epicId, scenario, defaultTaskId, onClose }: Scenari
   const [responsible, setResponsible] = useState(scenario?.responsible || state.settings.userName || '')
   const [notes, setNotes] = useState(scenario?.notes || '')
   const [taskId, setTaskId] = useState<string>(scenario?.taskId ?? defaultTaskId ?? '')
+  const [bugId] = useState<string>(scenario?.bugId ?? defaultBugId ?? '')
 
   const epicTasks = (state.tasks ?? []).filter(t => t.epicId === epicId).sort((a, b) => a.order - b.order)
 
@@ -52,6 +54,7 @@ function ScenarioFormModal({ epicId, scenario, defaultTaskId, onClose }: Scenari
       const newScenario: TestScenario = {
         id, epicId,
         taskId: taskId || undefined,
+        bugId: bugId || undefined,
         order: state.scenarios.filter(s => s.epicId === epicId).length + 1,
         title, area, criticality, responsible, notes,
         status: 'pending', isSensitive: false,
@@ -149,7 +152,7 @@ function BugFormModal({ epicId, bug, linkedScenarioId, onClose }: BugFormProps) 
     if (!title.trim()) { toast('Título é obrigatório', 'error'); return }
     const now = new Date().toISOString()
     if (bug) {
-      const wasResolved = bug.status !== 'resolved' && status === 'resolved'
+      const wasResolved = !['resolved', 'closed'].includes(bug.status) && ['resolved', 'closed'].includes(status)
       const wasReopened = (bug.status === 'resolved' || bug.status === 'closed') && status === 'reopened'
       dispatch({
         type: 'UPDATE_BUG', payload: {
@@ -1422,7 +1425,7 @@ function TasksTab({ epicId }: { epicId: string }) {
   const sortScenarios = (list: TestScenario[]) =>
     [...list].sort((a, b) => statusOrder[a.criticality] - statusOrder[b.criticality])
 
-  const unassigned = epicScenarios.filter(s => !s.taskId || !epicTasks.find(t => t.id === s.taskId))
+  const unassigned = epicScenarios.filter(s => (!s.taskId || !epicTasks.find(t => t.id === s.taskId)) && !s.bugId)
 
   const progressOf = (scenarios: TestScenario[]) => {
     if (scenarios.length === 0) return { pct: 0, passed: 0, total: 0 }
@@ -1663,6 +1666,157 @@ function ScenariosTab({ epicId }: { epicId: string }) {
   )
 }
 
+// ─── Bug Row ──────────────────────────────────────────────────────────────────
+
+function BugRow({
+  bug,
+  epicId,
+  epicTasks,
+  onEdit,
+  onDelete,
+}: {
+  bug: BugType
+  epicId: string
+  epicTasks: import('../types').EpicTask[]
+  onEdit: (b: BugType) => void
+  onDelete: (b: BugType) => void
+}) {
+  const { state, dispatch } = useApp()
+  const toast = useToast()
+  const [expanded, setExpanded] = useState(false)
+  const [showScenarioForm, setShowScenarioForm] = useState(false)
+  const [editingScenario, setEditingScenario] = useState<TestScenario | null>(null)
+
+  const bugScenarios = state.scenarios.filter(s => s.bugId === bug.id)
+
+  const deleteScenario = async (s: TestScenario) => {
+    if (!confirm(`Excluir cenário "${s.title}"?`)) return
+    for (const exec of s.executions) await deleteImagesByPrefix(`exec_${exec.id}_`)
+    dispatch({ type: 'DELETE_SCENARIO', payload: s.id })
+    toast('Cenário excluído', 'success')
+  }
+
+  const severityBorderColor: Record<string, string> = {
+    critical: 'border-l-red',
+    high: 'border-l-amber',
+    medium: 'border-l-purple',
+    low: 'border-l-green',
+  }
+
+  const reproLabel: Record<string, string> = {
+    always: 'Sempre',
+    intermittent: 'Intermitente',
+    rarely: 'Raramente',
+    not_reproducible: 'Não reproduzível',
+  }
+
+  return (
+    <div className={`rounded-xl border-l-2 border bg-surface border-white/[0.07] ${severityBorderColor[bug.severity]}`}>
+      {/* Header row */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface2/50 transition-colors"
+        onClick={() => setExpanded(v => !v)}
+      >
+        {expanded ? <ChevronDown size={14} className="text-muted shrink-0" /> : <ChevronRight size={14} className="text-muted shrink-0" />}
+        <span className="font-mono text-xs text-muted w-10 shrink-0">#{bug.id}</span>
+        <span className="text-sm text-text flex-1 font-medium">{bug.title}</span>
+        {bug.area && <span className="text-xs text-muted px-2 py-0.5 bg-surface2 rounded">{bug.area}</span>}
+        {bugScenarios.length > 0 && (
+          <span className="text-xs text-accent px-2 py-0.5 bg-accent/10 rounded border border-accent/20">
+            {bugScenarios.length} cenário{bugScenarios.length !== 1 ? 's' : ''}
+          </span>
+        )}
+        <BugSeverityBadge severity={bug.severity} />
+        <BugStatusBadge status={bug.status} />
+        {bug.reopenCount > 0 && (
+          <span className="text-xs text-orange-400">Reaberto {bug.reopenCount}x</span>
+        )}
+        <div className="flex gap-1 ml-2" onClick={e => e.stopPropagation()}>
+          <button onClick={() => onEdit(bug)} className="p-1.5 text-muted hover:text-text hover:bg-surface2 rounded-lg">
+            <Edit2 size={12} />
+          </button>
+          <button onClick={() => onDelete(bug)} className="p-1.5 text-muted hover:text-red hover:bg-surface2 rounded-lg">
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-white/[0.07]">
+          <div className="mt-3 pl-4 border-l-2 border-accent/20">
+            {/* Meta info */}
+            <div className="flex flex-wrap gap-4 text-xs text-muted mb-4">
+              <span>Reprodução: <span className="text-text">{reproLabel[bug.reproduction]}</span></span>
+              {bug.responsible && <span>Responsável: <span className="text-text">{bug.responsible}</span></span>}
+            </div>
+
+            {/* Observations */}
+            {bug.observations && (
+              <div className="mb-5">
+                <p className="text-xs text-muted mb-1.5">Observações</p>
+                <Markdown content={bug.observations} className="prose-pxqa" />
+              </div>
+            )}
+
+            {/* Verification Scenarios */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-text">
+                  Cenários de Verificação ({bugScenarios.length})
+                </h4>
+                <button
+                  onClick={() => setShowScenarioForm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-accent/20 text-accent border border-accent/30 rounded-lg text-xs font-medium hover:bg-accent/30"
+                >
+                  <Plus size={12} /> Adicionar Cenário
+                </button>
+              </div>
+
+              {bugScenarios.length === 0 ? (
+                <button
+                  onClick={() => setShowScenarioForm(true)}
+                  className="text-sm text-muted text-center py-6 border-2 border-dashed border-white/[0.07] rounded-xl hover:border-accent/30 hover:text-accent/60 transition-colors w-full"
+                >
+                  + Adicionar cenário de verificação a este bug
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {bugScenarios.map(s => (
+                    <ScenarioRow
+                      key={s.id}
+                      scenario={s}
+                      epicId={epicId}
+                      tasks={epicTasks}
+                      onEdit={setEditingScenario}
+                      onDelete={deleteScenario}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScenarioForm && (
+        <ScenarioFormModal
+          epicId={epicId}
+          defaultBugId={bug.id}
+          onClose={() => setShowScenarioForm(false)}
+        />
+      )}
+      {editingScenario && (
+        <ScenarioFormModal
+          epicId={epicId}
+          scenario={editingScenario}
+          onClose={() => setEditingScenario(null)}
+        />
+      )}
+    </div>
+  )
+}
+
 // ─── Bugs Tab ─────────────────────────────────────────────────────────────────
 
 function BugsTab({ epicId }: { epicId: string }) {
@@ -1671,6 +1825,8 @@ function BugsTab({ epicId }: { epicId: string }) {
   const [showCreate, setShowCreate] = useState(false)
   const [editingBug, setEditingBug] = useState<BugType | null>(null)
   const toast = useToast()
+
+  const epicTasks = (state.tasks ?? []).filter(t => t.epicId === epicId).sort((a, b) => a.order - b.order)
 
   const bugs = state.bugs.filter(b => b.epicId === epicId).filter(b =>
     !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.area.toLowerCase().includes(search.toLowerCase())
@@ -1702,43 +1858,17 @@ function BugsTab({ epicId }: { epicId: string }) {
       {bugs.length === 0 ? (
         <EmptyState icon={Bug} title="Nenhum bug registrado" description="Registre bugs encontrados durante o teste." action={{ label: 'Novo Bug', onClick: () => setShowCreate(true) }} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.07]">
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">#</th>
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">Título</th>
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">Área</th>
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">Severidade</th>
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">Status</th>
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">Reprodução</th>
-                <th className="text-xs text-muted text-left py-2 px-3 font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bugs.map(bug => (
-                <tr key={bug.id} className="border-b border-white/[0.04] hover:bg-surface2/30 transition-colors">
-                  <td className="py-2.5 px-3 font-mono text-xs text-muted">#{bug.id}</td>
-                  <td className="py-2.5 px-3 text-text max-w-xs">
-                    <p className="truncate">{bug.title}</p>
-                    {bug.reopenCount > 0 && <span className="text-xs text-orange-400">Reaberto {bug.reopenCount}x</span>}
-                  </td>
-                  <td className="py-2.5 px-3 text-muted text-xs">{bug.area}</td>
-                  <td className="py-2.5 px-3"><BugSeverityBadge severity={bug.severity} /></td>
-                  <td className="py-2.5 px-3"><BugStatusBadge status={bug.status} /></td>
-                  <td className="py-2.5 px-3 text-xs text-muted">
-                    {bug.reproduction === 'always' ? 'Sempre' : bug.reproduction === 'intermittent' ? 'Intermitente' : bug.reproduction === 'rarely' ? 'Raramente' : 'Não reproduzível'}
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex gap-1">
-                      <button onClick={() => setEditingBug(bug)} className="p-1.5 text-muted hover:text-text hover:bg-surface2 rounded-lg"><Edit2 size={12} /></button>
-                      <button onClick={() => deleteBug(bug)} className="p-1.5 text-muted hover:text-red hover:bg-surface2 rounded-lg"><Trash2 size={12} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-2">
+          {bugs.map(bug => (
+            <BugRow
+              key={bug.id}
+              bug={bug}
+              epicId={epicId}
+              epicTasks={epicTasks}
+              onEdit={setEditingBug}
+              onDelete={deleteBug}
+            />
+          ))}
         </div>
       )}
 

@@ -29,6 +29,7 @@ export interface TestScenario {
   id: string
   epicId: string
   taskId?: string
+  bugId?: string
   order: number
   title: string
   area: string

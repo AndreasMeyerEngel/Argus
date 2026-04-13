@@ -43,7 +43,7 @@ O Argus suporta dois ambientes, chaveados automaticamente pela presença da vari
 docker-compose up --build
 ```
 
-Acesse em `http://localhost:3000`.
+Acesse em `http://localhost:3001`.
 
 Na primeira execução, o build pode levar alguns minutos (instala dependências, compila frontend e backend). Nas execuções seguintes, o cache do Docker acelera o processo.
 

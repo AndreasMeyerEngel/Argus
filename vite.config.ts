@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     // Proxy /api/* to the local backend when running without Supabase env vars
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': 'http://localhost:3001',
     },
   },
 })
