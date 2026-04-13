@@ -1494,13 +1494,15 @@ function TasksTab({ epicId }: { epicId: string }) {
   const toast = useToast()
   const [showCreateTask, setShowCreateTask] = useState(false)
   const [editingTask, setEditingTask] = useState<import('../types').EpicTask | null>(null)
-  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set())
-  const [showCreateScenario, setShowCreateScenario] = useState<string | null>(null) // taskId
-  const [editingScenario, setEditingScenario] = useState<TestScenario | null>(null)
-
   const epicTasks = (state.tasks ?? [])
     .filter(t => t.epicId === epicId)
     .sort((a, b) => a.order - b.order)
+
+  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(
+    () => new Set([...epicTasks.map(t => t.id), '__unassigned'])
+  )
+  const [showCreateScenario, setShowCreateScenario] = useState<string | null>(null) // taskId
+  const [editingScenario, setEditingScenario] = useState<TestScenario | null>(null)
 
   const epicScenarios = state.scenarios.filter(s => s.epicId === epicId)
 
