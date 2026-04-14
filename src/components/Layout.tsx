@@ -221,11 +221,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { to: '/', icon: LayoutGrid, label: 'Projetos' },
+    { to: '/test-plans', icon: ClipboardList, label: 'Planos de Teste' },
     { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
     { to: '/report', icon: FileText, label: 'Relatório' },
     { to: '/traceability', icon: GitBranch, label: 'Rastreabilidade' },
     { to: '/history', icon: History, label: 'Histórico' },
-    { to: '/test-plans', icon: ClipboardList, label: 'Planos de Teste' },
   ]
 
   const epicStatusColor: Record<string, string> = {
