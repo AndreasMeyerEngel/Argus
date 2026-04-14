@@ -103,17 +103,44 @@ export interface HistoryEntry {
   notes?: string
 }
 
+export interface PlanScenarioItem {
+  scenarioId: string
+  assignedTo: string
+  status: 'pending' | 'passed' | 'failed' | 'blocked' | 'partial' | 'skipped'
+  notes: string
+  executedAt?: string
+  executedBy?: string
+}
+
+export interface TestPlan {
+  id: string
+  name: string
+  description: string
+  build: string
+  environment: string
+  status: 'draft' | 'active' | 'completed' | 'archived'
+  responsible: string
+  startDate: string
+  dueDate: string
+  scenarios: PlanScenarioItem[]
+  comments: Comment[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface AppState {
   epics: Epic[]
   tasks: EpicTask[]
   scenarios: TestScenario[]
   bugs: Bug[]
+  testPlans: TestPlan[]
   history: HistoryEntry[]
   nextEpicId: number
   nextTaskId: number
   nextScenarioId: number
   nextBugId: number
   nextExecId: number
+  nextTestPlanId: number
   nextHistoryId: number
   settings: {
     userName: string

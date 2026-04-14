@@ -18,6 +18,7 @@ Sistema pessoal de gestão de QA — rastreie épicos, tarefas, cenários de tes
 - **Dashboard** — KPIs, gráficos de progresso e análise de tendências
 - **Relatórios** — histórico de execuções por período
 - **Guided Run** — modo guiado de execução de testes passo a passo
+- **Planos de Teste** — agrupe cenários em planos por build/sprint com execução e status independentes do status global
 - **Backup** — exportar e importar dados em JSON
 
 ---
@@ -176,7 +177,9 @@ O Vite está configurado para fazer proxy de `/api/*` para `http://localhost:300
 │   │   ├── EpicPage.tsx         Detalhe do épico
 │   │   ├── GuidedRun.tsx        Execução guiada
 │   │   ├── Dashboard.tsx        Painel de indicadores
-│   │   └── Report.tsx           Relatórios históricos
+│   │   ├── Report.tsx           Relatórios históricos
+│   │   ├── TestPlans.tsx        Lista de planos de teste
+│   │   └── TestPlanPage.tsx     Detalhe e execução do plano
 │   └── types/index.ts           Interfaces TypeScript
 │
 ├── app/                        Backend (modo local/Docker)
@@ -219,6 +222,9 @@ Epic
            └── Bug
 
 EpicTask (avulsa, sem épico)
+
+TestPlan
+ └── PlanScenarioItem   (status por plano, independente do status global do cenário)
 ```
 
 No modo Supabase, todo o estado é serializado como JSONB em uma única linha da tabela `app_state`.

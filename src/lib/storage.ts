@@ -6,11 +6,13 @@ export const defaultState: AppState = {
   tasks: [],
   scenarios: [],
   bugs: [],
+  testPlans: [],
   nextEpicId: 1,
   nextTaskId: 1,
   nextScenarioId: 1,
   nextBugId: 1,
   nextExecId: 1,
+  nextTestPlanId: 1,
   nextHistoryId: 1,
   history: [],
   settings: { userName: '', reportPeriodDays: 14 }

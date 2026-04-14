@@ -14,6 +14,8 @@ import Tarefas from './pages/Tarefas'
 import Traceability from './pages/Traceability'
 import History from './pages/History'
 import Presentation from './pages/Presentation'
+import TestPlans from './pages/TestPlans'
+import TestPlanPage from './pages/TestPlanPage'
 import Login from './pages/Login'
 
 function AppRoutes() {
@@ -31,6 +33,8 @@ function AppRoutes() {
         <Route path="/traceability" element={<Layout><Traceability /></Layout>} />
         <Route path="/history" element={<Layout><History /></Layout>} />
         <Route path="/presentation" element={<Presentation />} />
+        <Route path="/test-plans" element={<Layout><TestPlans /></Layout>} />
+        <Route path="/test-plan/:id" element={<Layout><TestPlanPage /></Layout>} />
         <Route path="/epic/:id" element={<Layout><EpicPage /></Layout>} />
         <Route path="/epic/:id/run" element={<GuidedRun />} />
       </Routes>

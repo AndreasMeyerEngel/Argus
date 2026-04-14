@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, Download, Upload, LogOut, ClipboardPaste, Sun, Moon, GitBranch, History } from 'lucide-react'
+import { LayoutGrid, BarChart2, FileText, Settings, ChevronRight, Eye, X, Download, Upload, LogOut, ClipboardPaste, Sun, Moon, GitBranch, History, ClipboardList } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -225,6 +225,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { to: '/report', icon: FileText, label: 'Relatório' },
     { to: '/traceability', icon: GitBranch, label: 'Rastreabilidade' },
     { to: '/history', icon: History, label: 'Histórico' },
+    { to: '/test-plans', icon: ClipboardList, label: 'Planos de Teste' },
   ]
 
   const epicStatusColor: Record<string, string> = {

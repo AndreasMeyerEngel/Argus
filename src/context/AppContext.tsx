@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react'
-import { AppState, Epic, EpicTask, TestScenario, Bug, TestExecution, HistoryEntry, Comment } from '../types'
+import { AppState, Epic, EpicTask, TestScenario, Bug, TestExecution, HistoryEntry, Comment, TestPlan, PlanScenarioItem } from '../types'
 import { loadState, saveState, defaultState } from '../lib/storage'
 
 // ─── History helper ───────────────────────────────────────────────────────────
@@ -34,6 +34,12 @@ type Action =
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppState['settings']> }
   | { type: 'ADD_COMMENT'; payload: { entityType: 'scenario' | 'bug'; entityId: string; comment: Comment } }
   | { type: 'DELETE_COMMENT'; payload: { entityType: 'scenario' | 'bug'; entityId: string; commentId: string } }
+  | { type: 'ADD_TEST_PLAN'; payload: TestPlan }
+  | { type: 'UPDATE_TEST_PLAN'; payload: TestPlan }
+  | { type: 'DELETE_TEST_PLAN'; payload: string }
+  | { type: 'EXECUTE_PLAN_SCENARIO'; payload: { planId: string; item: PlanScenarioItem } }
+  | { type: 'ADD_PLAN_COMMENT'; payload: { planId: string; comment: Comment } }
+  | { type: 'DELETE_PLAN_COMMENT'; payload: { planId: string; commentId: string } }
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -283,6 +289,64 @@ function reducer(state: AppState, action: Action): AppState {
         bugs: state.bugs.map(b =>
           b.id === entityId ? { ...b, comments: (b.comments ?? []).filter(c => c.id !== commentId) } : b
         )
+      }
+    }
+
+    case 'ADD_TEST_PLAN': {
+      const tp = action.payload
+      return {
+        ...state,
+        testPlans: [...(state.testPlans ?? []), tp],
+        nextTestPlanId: (state.nextTestPlanId ?? 1) + 1,
+      }
+    }
+
+    case 'UPDATE_TEST_PLAN':
+      return {
+        ...state,
+        testPlans: (state.testPlans ?? []).map(p =>
+          p.id === action.payload.id ? action.payload : p
+        ),
+      }
+
+    case 'DELETE_TEST_PLAN':
+      return {
+        ...state,
+        testPlans: (state.testPlans ?? []).filter(p => p.id !== action.payload),
+      }
+
+    case 'EXECUTE_PLAN_SCENARIO': {
+      const { planId, item } = action.payload
+      return {
+        ...state,
+        testPlans: (state.testPlans ?? []).map(p => {
+          if (p.id !== planId) return p
+          const exists = p.scenarios.some(s => s.scenarioId === item.scenarioId)
+          const scenarios = exists
+            ? p.scenarios.map(s => s.scenarioId === item.scenarioId ? item : s)
+            : [...p.scenarios, item]
+          return { ...p, scenarios, updatedAt: new Date().toISOString() }
+        }),
+      }
+    }
+
+    case 'ADD_PLAN_COMMENT': {
+      const { planId, comment } = action.payload
+      return {
+        ...state,
+        testPlans: (state.testPlans ?? []).map(p =>
+          p.id === planId ? { ...p, comments: [...(p.comments ?? []), comment] } : p
+        ),
+      }
+    }
+
+    case 'DELETE_PLAN_COMMENT': {
+      const { planId, commentId } = action.payload
+      return {
+        ...state,
+        testPlans: (state.testPlans ?? []).map(p =>
+          p.id === planId ? { ...p, comments: (p.comments ?? []).filter(c => c.id !== commentId) } : p
+        ),
       }
     }
 
