@@ -304,7 +304,7 @@ export default function Report() {
           : 'A taxa de sucesso permaneceu estável em relação ao período anterior.'
       : ''
 
-    return `No período de ${fmt(periodStart)} a ${fmt(periodEnd)} foram executados ${executedInPeriod.length} cenário(s) em ${activeEpics} épico(s) ativo(s). A taxa de sucesso foi de ${successRate}%. Foram abertos ${currentBugsOpened.length} bug(s), dos quais ${currentBugsOpened.filter(b => b.severity === 'critical').length} são críticos. ${comparison}`
+    return `No período de ${fmt(periodStart)} a ${fmt(periodEnd)} foram executados ${executedInPeriod.length} cenário(s) em ${activeEpics} projeto(s) ativo(s). A taxa de sucesso foi de ${successRate}%. Foram abertos ${currentBugsOpened.length} bug(s), dos quais ${currentBugsOpened.filter(b => b.severity === 'critical').length} são críticos. ${comparison}`
   }, [state, periodStart, periodEnd, executedInPeriod, successRate, currentBugsOpened, prevSuccessRate])
 
   // ── Export HTML ───────────────────────────────────────────────────────────
@@ -418,7 +418,7 @@ export default function Report() {
 </div>
 
 <div class="chart-card-full">
-  <h3>Cobertura por Épico</h3>
+  <h3>Cobertura por Projeto</h3>
   <canvas id="chartEpics" height="120"></canvas>
 </div>
 
@@ -444,9 +444,9 @@ export default function Report() {
   ${topBugs.map(b => `<tr><td>#${b.id}</td><td>${b.title}</td><td>${b.area || '—'}</td><td class="sev-${b.severity}">${b.severity}</td><td>${statusLabels[b.status] ?? b.status}</td><td>${differenceInDays(new Date(), new Date(b.openedAt))}</td></tr>`).join('')}
 </table>
 
-<h2>Cobertura por Épico</h2>
+<h2>Cobertura por Projeto</h2>
 <table>
-  <tr><th>Épico</th><th>Total</th><th>Executados</th><th>Cobertura</th><th>Bugs abertos</th></tr>
+  <tr><th>Projeto</th><th>Total</th><th>Executados</th><th>Cobertura</th><th>Bugs abertos</th></tr>
   ${rows}
 </table>
 
@@ -478,7 +478,7 @@ new Chart(document.getElementById('chartBugSev'), {
   options: { plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } } }, cutout: '62%' }
 })
 
-// 3. Cobertura por épico
+// 3. Cobertura por projeto
 new Chart(document.getElementById('chartEpics'), {
   type: 'bar',
   data: {
@@ -595,13 +595,13 @@ new Chart(document.getElementById('chartBugStatus'), {
 
     // Slide 4: Coverage by epic
     <div key="coverage" className="w-full max-w-3xl">
-      <h2 className="text-3xl font-bold text-text mb-2">Cobertura por Épico</h2>
+      <h2 className="text-3xl font-bold text-text mb-2">Cobertura por Projeto</h2>
       <p className="text-muted mb-6">Cenários executados no período</p>
       <div className="overflow-hidden rounded-xl border border-white/[0.07]">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface2">
-              <th className="text-left px-4 py-3 text-muted font-medium">Épico</th>
+              <th className="text-left px-4 py-3 text-muted font-medium">Projeto</th>
               <th className="text-right px-4 py-3 text-muted font-medium">Executados</th>
               <th className="text-right px-4 py-3 text-muted font-medium">Total</th>
               <th className="text-right px-4 py-3 text-muted font-medium">Cobertura</th>
@@ -747,7 +747,7 @@ new Chart(document.getElementById('chartBugStatus'), {
                     <th className="text-left px-4 py-3 text-muted font-medium">ID</th>
                     <th className="text-left px-4 py-3 text-muted font-medium">Título</th>
                     <th className="text-left px-4 py-3 text-muted font-medium">Área</th>
-                    <th className="text-left px-4 py-3 text-muted font-medium">Épico</th>
+                    <th className="text-left px-4 py-3 text-muted font-medium">Projeto</th>
                     <th className="text-left px-4 py-3 text-muted font-medium">Status</th>
                     <th className="text-right px-4 py-3 text-muted font-medium">Dias em aberto</th>
                   </tr>
@@ -777,12 +777,12 @@ new Chart(document.getElementById('chartBugStatus'), {
 
         {/* Section 4 — Coverage by epic */}
         <section className="bg-surface border border-white/[0.07] rounded-xl p-6">
-          <h2 className="text-base font-semibold text-text mb-4">Cobertura por Épico</h2>
+          <h2 className="text-base font-semibold text-text mb-4">Cobertura por Projeto</h2>
           <div className="overflow-hidden rounded-lg border border-white/[0.07]">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface2">
-                  <th className="text-left px-4 py-3 text-muted font-medium">Épico</th>
+                  <th className="text-left px-4 py-3 text-muted font-medium">Projeto</th>
                   <th className="text-right px-4 py-3 text-muted font-medium">Total cenários</th>
                   <th className="text-right px-4 py-3 text-muted font-medium">Executados</th>
                   <th className="text-right px-4 py-3 text-muted font-medium">Cobertura</th>
@@ -808,7 +808,7 @@ new Chart(document.getElementById('chartBugStatus'), {
                   </tr>
                 ))}
                 {coverageByEpic.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">Nenhum épico ativo</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">Nenhum projeto ativo</td></tr>
                 )}
               </tbody>
             </table>

@@ -308,7 +308,7 @@ function EpicGroupComponent({ group, allBugs }: { group: EpicGroup; allBugs: Bug
             )
           })}
           {rows.length === 0 && (
-            <div className="px-8 py-4 text-xs text-muted italic">Nenhum cenário de teste neste épico.</div>
+            <div className="px-8 py-4 text-xs text-muted italic">Nenhum cenário de teste neste projeto.</div>
           )}
         </div>
       )}
@@ -418,7 +418,7 @@ export default function Traceability() {
             <GitBranch size={20} className="text-accent" />
             <h1 className="text-xl font-bold text-text">Matriz de Rastreabilidade</h1>
           </div>
-          <p className="text-sm text-muted">Épicos → Tarefas → Bugs → Cenários de teste</p>
+          <p className="text-sm text-muted">Projetos → Tarefas → Bugs → Cenários de teste</p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -428,7 +428,7 @@ export default function Traceability() {
             onChange={e => setEpicFilter(e.target.value)}
             className="bg-surface border border-white/[0.07] rounded-lg px-3 py-1.5 text-sm text-text outline-none focus:border-accent cursor-pointer"
           >
-            <option value="all">Todos os épicos</option>
+            <option value="all">Todos os projetos</option>
             {epics.map(e => (
               <option key={e.id} value={e.id}>{e.name}</option>
             ))}
@@ -454,7 +454,7 @@ export default function Traceability() {
 
       <div className="flex flex-col gap-4">
         {groups.length === 0 && (
-          <div className="text-center py-16 text-muted text-sm">Nenhum épico encontrado.</div>
+          <div className="text-center py-16 text-muted text-sm">Nenhum projeto encontrado.</div>
         )}
         {groups.map(group => (
           <EpicGroupComponent key={group.epic.id} group={group} allBugs={bugs} />

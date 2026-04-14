@@ -214,7 +214,7 @@ export default function Dashboard() {
     const list: { type: 'warning' | 'critical' | 'info'; message: string }[] = []
     if (criticalBugs > 0) list.push({ type: 'critical', message: `${criticalBugs} bug(s) crítico(s) ainda em aberto.` })
     const blockedEpics = state.epics.filter(e => e.status === 'blocked').length
-    if (blockedEpics > 0) list.push({ type: 'warning', message: `${blockedEpics} épico(s) bloqueados. Verifique as dependências.` })
+    if (blockedEpics > 0) list.push({ type: 'warning', message: `${blockedEpics} projeto(s) bloqueados. Verifique as dependências.` })
     const unstable = filteredScenarios.filter(s => s.executions.filter(e => e.result === 'failed').length > 1).length
     if (unstable > 0) list.push({ type: 'warning', message: `${unstable} cenário(s) com falhas recorrentes (instáveis).` })
     const highReopen = filteredBugs.filter(b => b.reopenCount >= 2).length
@@ -283,7 +283,7 @@ export default function Dashboard() {
       {/* Heatmap */}
       {epicHeatmap.length > 0 && (
         <div className="bg-surface border border-white/[0.07] rounded-xl p-5 mb-6">
-          <h2 className="text-sm font-semibold text-text mb-4">Heatmap de Cobertura por Épico</h2>
+          <h2 className="text-sm font-semibold text-text mb-4">Heatmap de Cobertura por Projeto</h2>
           <div className="flex flex-wrap gap-2">
             {epicHeatmap.map(({ epic, scenarios, pct, bugs }) => {
               const heat = getHeatColor(pct)
@@ -350,7 +350,7 @@ export default function Dashboard() {
 
         {/* Reopen rate */}
         <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-text mb-4">Taxa de Reabertura por Épico (%)</h2>
+          <h2 className="text-sm font-semibold text-text mb-4">Taxa de Reabertura por Projeto (%)</h2>
           {reopenRateByEpic.length === 0 ? (
             <div className="flex items-center justify-center h-[200px] text-muted text-sm">Nenhuma reabertura registrada</div>
           ) : (

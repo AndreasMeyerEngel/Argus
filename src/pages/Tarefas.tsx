@@ -196,7 +196,7 @@ export default function Tarefas() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-text">Tarefas Avulsas</h1>
-          <p className="text-sm text-muted mt-0.5">Tarefas que não estão vinculadas a nenhum épico</p>
+          <p className="text-sm text-muted mt-0.5">Tarefas que não estão vinculadas a nenhum projeto</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -226,7 +226,7 @@ export default function Tarefas() {
           title="Nenhuma tarefa avulsa"
           description={
             freeTasks.length === 0
-              ? 'Crie tarefas que não precisam estar vinculadas a um épico.'
+              ? 'Crie tarefas que não precisam estar vinculadas a um projeto.'
               : 'Nenhuma tarefa encontrada para essa busca.'
           }
           action={freeTasks.length === 0 ? { label: 'Nova Tarefa', onClick: () => setShowCreate(true) } : undefined}

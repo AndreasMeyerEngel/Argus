@@ -14,11 +14,11 @@ import { HistoryEntry } from '../types'
 const actionConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   'created:scenario':      { label: 'Cenário criado',        icon: <Plus size={13} />,        color: 'text-accent bg-accent/10 border-accent/20' },
   'created:bug':           { label: 'Bug registrado',         icon: <BugIcon size={13} />,     color: 'text-red bg-red/10 border-red/20' },
-  'created:epic':          { label: 'Épico criado',           icon: <Layers size={13} />,      color: 'text-accent bg-accent/10 border-accent/20' },
+  'created:epic':          { label: 'Projeto criado',           icon: <Layers size={13} />,      color: 'text-accent bg-accent/10 border-accent/20' },
   'executed:scenario':     { label: 'Execução registrada',    icon: <Play size={13} />,        color: 'text-amber bg-amber/10 border-amber/20' },
   'status_changed:scenario': { label: 'Status do cenário',   icon: <RefreshCw size={13} />,   color: 'text-muted bg-surface2 border-white/10' },
   'status_changed:bug':    { label: 'Status do bug',          icon: <RefreshCw size={13} />,   color: 'text-muted bg-surface2 border-white/10' },
-  'status_changed:epic':   { label: 'Status do épico',        icon: <RefreshCw size={13} />,   color: 'text-muted bg-surface2 border-white/10' },
+  'status_changed:epic':   { label: 'Status do projeto',        icon: <RefreshCw size={13} />,   color: 'text-muted bg-surface2 border-white/10' },
   'deleted:scenario':      { label: 'Cenário removido',       icon: <MinusCircle size={13} />, color: 'text-red bg-red/10 border-red/20' },
   'deleted:bug':           { label: 'Bug removido',           icon: <MinusCircle size={13} />, color: 'text-red bg-red/10 border-red/20' },
 }
@@ -176,7 +176,7 @@ const TYPE_OPTIONS = [
   { label: 'Tudo',      value: 'all' },
   { label: 'Cenários',  value: 'scenario' },
   { label: 'Bugs',      value: 'bug' },
-  { label: 'Épicos',    value: 'epic' },
+  { label: 'Projetos',    value: 'epic' },
 ]
 
 const ACTION_OPTIONS = [
@@ -261,7 +261,7 @@ export default function History() {
         </div>
 
         <select value={epicFilter}    onChange={e => setEpicFilter(e.target.value)}    className={selectCls}>
-          <option value="all">Todos os épicos</option>
+          <option value="all">Todos os projetos</option>
           {epics.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
 

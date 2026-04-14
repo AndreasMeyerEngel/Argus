@@ -2202,7 +2202,7 @@ function EpicEditModal({ epic, onClose }: { epic: Epic; onClose: () => void }) {
   const save = () => {
     if (!form.name.trim()) { toast('Nome é obrigatório', 'error'); return }
     dispatch({ type: 'UPDATE_EPIC', payload: { ...epic, ...form, updatedAt: new Date().toISOString() } })
-    toast('Épico atualizado', 'success')
+    toast('Projeto atualizado', 'success')
     onClose()
   }
 
@@ -2210,7 +2210,7 @@ function EpicEditModal({ epic, onClose }: { epic: Epic; onClose: () => void }) {
   const lbl = 'block text-xs text-muted mb-1.5'
 
   return (
-    <Modal title="Editar Épico" onClose={onClose} size="lg">
+    <Modal title="Editar Projeto" onClose={onClose} size="lg">
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className={lbl}>Nome *</label>
@@ -2218,7 +2218,7 @@ function EpicEditModal({ epic, onClose }: { epic: Epic; onClose: () => void }) {
         </div>
         <div className="col-span-2">
           <label className={lbl}>Descrição</label>
-          <textarea className={cls + ' resize-none'} rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descreva o épico" />
+          <textarea className={cls + ' resize-none'} rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descreva o projeto" />
         </div>
         <div>
           <label className={lbl}>Squad</label>
@@ -2279,9 +2279,9 @@ export default function EpicPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-muted mb-4">Épico não encontrado.</p>
+          <p className="text-muted mb-4">Projeto não encontrado.</p>
           <button onClick={() => navigate('/')} className="text-accent hover:text-accent/80 text-sm">
-            Voltar para Épicos
+            Voltar para Projetos
           </button>
         </div>
       </div>
@@ -2299,7 +2299,7 @@ export default function EpicPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-xs text-muted mb-2">
-          <button onClick={() => navigate('/')} className="hover:text-text transition-colors">Épicos</button>
+          <button onClick={() => navigate('/')} className="hover:text-text transition-colors">Projetos</button>
           <span>/</span>
           <span className="text-text">{epic.name}</span>
         </div>
@@ -2307,7 +2307,7 @@ export default function EpicPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-text mb-1">{epic.name}</h1>
-              <button onClick={() => setEditingEpic(true)} className="p-1.5 text-muted hover:text-text hover:bg-surface2 rounded-lg transition-colors mb-1" title="Editar épico">
+              <button onClick={() => setEditingEpic(true)} className="p-1.5 text-muted hover:text-text hover:bg-surface2 rounded-lg transition-colors mb-1" title="Editar projeto">
                 <Edit2 size={14} />
               </button>
             </div>

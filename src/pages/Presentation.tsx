@@ -121,7 +121,7 @@ const slides: React.ReactNode[] = [
     </div>
     <div className="flex items-center justify-center gap-3 flex-wrap">
       {[
-        { icon: <Layers size={18} />, label: 'Épicos' },
+        { icon: <Layers size={18} />, label: 'Projetos' },
         { icon: <CheckSquare size={18} />, label: 'Cenários' },
         { icon: <Play size={18} />, label: 'Execuções' },
         { icon: <Bug size={18} />, label: 'Bugs' },
@@ -138,23 +138,23 @@ const slides: React.ReactNode[] = [
     </div>
     <div className="mt-8 bg-accent/5 border border-accent/20 rounded-2xl px-6 py-4 text-center">
       <p className="text-sm text-text">
-        Hierarquia clara: <span className="text-accent font-semibold">Épico</span> → <span className="text-accent font-semibold">Tarefa</span> → <span className="text-accent font-semibold">Cenário</span> → <span className="text-accent font-semibold">Execução</span> / <span className="text-red font-semibold">Bug</span>
+        Hierarquia clara: <span className="text-accent font-semibold">Projeto</span> → <span className="text-accent font-semibold">Tarefa</span> → <span className="text-accent font-semibold">Cenário</span> → <span className="text-accent font-semibold">Execução</span> / <span className="text-red font-semibold">Bug</span>
       </p>
     </div>
   </Slide>,
 
-  /* 4 — Épicos e Tarefas */
+  /* 4 — Projetos e Tarefas */
   <Slide key="epics">
     <div className="mb-10">
-      <Tag>Épicos e Tarefas</Tag>
+      <Tag>Projetos e Tarefas</Tag>
       <h2 className="text-4xl font-bold text-text mt-4 mb-2">Organize o trabalho</h2>
       <p className="text-muted text-lg">Agrupe os esforços de QA por entrega ou funcionalidade</p>
     </div>
     <div className="grid grid-cols-2 gap-4">
-      <FeatureCard icon={<Layers size={18} />} title="Épicos" desc="Cada épico representa uma entrega: tem status, prioridade, squad, produto e prazo. Visual claro do que está em andamento." />
-      <FeatureCard icon={<CheckSquare size={18} />} title="Tarefas" desc="Tarefas dentro do épico organizam os cenários por ticket ou funcionalidade específica." />
+      <FeatureCard icon={<Layers size={18} />} title="Projetos" desc="Cada projeto representa uma entrega: tem status, prioridade, squad, produto e prazo. Visual claro do que está em andamento." />
+      <FeatureCard icon={<CheckSquare size={18} />} title="Tarefas" desc="Tarefas dentro do projeto organizam os cenários por ticket ou funcionalidade específica." />
       <FeatureCard icon={<BarChart2 size={18} />} title="Progresso visual" desc="Barra de progresso mostrando quantos cenários foram executados e a taxa de aprovação em tempo real." />
-      <FeatureCard icon={<Users size={18} />} title="Visibilidade por squad" desc="Filtre épicos por squad e produto. Saiba exatamente o que cada time está testando." />
+      <FeatureCard icon={<Users size={18} />} title="Visibilidade por squad" desc="Filtre projetos por squad e produto. Saiba exatamente o que cada time está testando." />
     </div>
   </Slide>,
 
@@ -270,7 +270,7 @@ const slides: React.ReactNode[] = [
     </div>
     <div className="grid grid-cols-4 gap-3 mb-6">
       {[
-        { label: 'Épicos Ativos', color: 'text-accent' },
+        { label: 'Projetos Ativos', color: 'text-accent' },
         { label: 'Cenários Totais', color: 'text-text' },
         { label: 'Bugs Críticos', color: 'text-red' },
         { label: 'Taxa de Sucesso', color: 'text-green' },
@@ -282,9 +282,9 @@ const slides: React.ReactNode[] = [
       ))}
     </div>
     <div className="grid grid-cols-2 gap-4">
-      <FeatureCard icon={<BarChart2 size={18} />} title="Progresso por épico" desc="Veja quantos cenários foram executados em cada épico, a taxa de aprovação e quantos bugs estão abertos." />
+      <FeatureCard icon={<BarChart2 size={18} />} title="Progresso por projeto" desc="Veja quantos cenários foram executados em cada projeto, a taxa de aprovação e quantos bugs estão abertos." />
       <FeatureCard icon={<Clock size={18} />} title="Filtro por período" desc="Analise os dados de hoje, última semana, último mês ou de todo o histórico do projeto." />
-      <FeatureCard icon={<GitBranch size={18} />} title="Heatmap de cobertura" desc="Visualize quais épicos têm maior ou menor cobertura de testes — identifique gaps rapidamente." />
+      <FeatureCard icon={<GitBranch size={18} />} title="Heatmap de cobertura" desc="Visualize quais projetos têm maior ou menor cobertura de testes — identifique gaps rapidamente." />
       <FeatureCard icon={<FileText size={18} />} title="Relatório para stakeholders" desc="Gere relatórios por período prontos para compartilhar com o time de produto e gestão." />
     </div>
   </Slide>,
@@ -298,7 +298,7 @@ const slides: React.ReactNode[] = [
     </div>
     <div className="bg-surface border border-white/[0.07] rounded-2xl overflow-hidden mb-6">
       <div className="px-5 py-3 bg-surface2 border-b border-white/[0.07] flex items-center justify-between">
-        <span className="text-sm font-semibold text-text">Épico: [FFC-580] Gestão de saldo via fatura</span>
+        <span className="text-sm font-semibold text-text">Projeto: [FFC-580] Gestão de saldo via fatura</span>
         <div className="flex items-center gap-2">
           <span className="text-xs bg-green/15 text-green px-2 py-0.5 rounded-full">25 aprovados</span>
           <span className="text-xs text-muted">100%</span>
@@ -329,7 +329,7 @@ const slides: React.ReactNode[] = [
         <p className="text-sm font-semibold text-text">Bugs que causaram falhas</p>
       </div>
       <div className="bg-surface border border-white/[0.07] rounded-xl p-4 text-center">
-        <p className="text-xs text-muted mb-1">Épico → %</p>
+        <p className="text-xs text-muted mb-1">Projeto → %</p>
         <p className="text-sm font-semibold text-text">Taxa de cobertura geral</p>
       </div>
     </div>
@@ -350,7 +350,7 @@ const slides: React.ReactNode[] = [
             { dot: 'bg-accent', text: 'Cenário criado por Andreas', time: '09:32' },
             { dot: 'bg-green',  text: 'Cenário #0022 → Aprovado',  time: '10:15' },
             { dot: 'bg-red',    text: 'Bug registrado: CDAMP-01676', time: '11:04' },
-            { dot: 'bg-amber',  text: 'Status do épico → Em andamento', time: '14:20' },
+            { dot: 'bg-amber',  text: 'Status do projeto → Em andamento', time: '14:20' },
           ].map(({ dot, text, time }) => (
             <div key={text} className="flex items-center gap-3 bg-surface border border-white/[0.07] rounded-xl px-4 py-2.5">
               <div className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
@@ -359,7 +359,7 @@ const slides: React.ReactNode[] = [
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted mt-3">Filtre por épico, tipo de evento e período</p>
+        <p className="text-xs text-muted mt-3">Filtre por projeto, tipo de evento e período</p>
       </div>
       <div>
         <p className="text-xs text-muted uppercase tracking-wider mb-3">Comentários</p>

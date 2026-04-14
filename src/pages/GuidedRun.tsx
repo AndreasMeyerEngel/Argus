@@ -37,13 +37,13 @@ export default function GuidedRun() {
             {done ? 'Execução concluída!' : 'Sem cenários pendentes'}
           </h1>
           <p className="text-muted mb-6">
-            {done ? 'Todos os cenários foram executados.' : 'Não há cenários pendentes neste épico.'}
+            {done ? 'Todos os cenários foram executados.' : 'Não há cenários pendentes neste projeto.'}
           </p>
           <button
             onClick={() => navigate(`/epic/${id}`)}
             className="px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/80"
           >
-            Voltar ao Épico
+            Voltar ao Projeto
           </button>
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function GuidedRun() {
           <h1 className="text-2xl font-bold text-text mb-2">Execução concluída!</h1>
           <p className="text-muted mb-6">Todos os {pendingScenarios.length} cenários pendentes foram processados.</p>
           <button onClick={() => navigate(`/epic/${id}`)} className="px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/80">
-            Voltar ao Épico
+            Voltar ao Projeto
           </button>
         </div>
       </div>

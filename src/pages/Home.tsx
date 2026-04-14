@@ -45,11 +45,11 @@ function EpicModal({ epic, onClose }: { epic?: Epic; onClose: () => void }) {
     const now = new Date().toISOString()
     if (epic) {
       dispatch({ type: 'UPDATE_EPIC', payload: { ...epic, ...form, updatedAt: now } })
-      toast('Épico atualizado', 'success')
+      toast('Projeto atualizado', 'success')
     } else {
       const id = String(state.nextEpicId).padStart(4, '0')
       dispatch({ type: 'ADD_EPIC', payload: { ...form, id, createdAt: now, updatedAt: now } })
-      toast('Épico criado', 'success')
+      toast('Projeto criado', 'success')
     }
     onClose()
   }
@@ -58,15 +58,15 @@ function EpicModal({ epic, onClose }: { epic?: Epic; onClose: () => void }) {
   const labelCls = 'block text-xs text-muted mb-1.5'
 
   return (
-    <Modal title={epic ? 'Editar Épico' : 'Novo Épico'} onClose={onClose} size="lg">
+    <Modal title={epic ? 'Editar Projeto' : 'Novo Projeto'} onClose={onClose} size="lg">
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className={labelCls}>Nome *</label>
-          <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nome do épico" />
+          <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nome do projeto" />
         </div>
         <div className="col-span-2">
           <label className={labelCls}>Descrição</label>
-          <textarea className={inputCls + ' resize-none'} rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descreva o épico" />
+          <textarea className={inputCls + ' resize-none'} rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descreva o projeto" />
         </div>
         <div>
           <label className={labelCls}>Squad</label>
@@ -107,7 +107,7 @@ function EpicModal({ epic, onClose }: { epic?: Epic; onClose: () => void }) {
       <div className="flex justify-end gap-3 mt-6">
         <button onClick={onClose} className="px-4 py-2 text-sm text-muted hover:text-text transition-colors">Cancelar</button>
         <button onClick={save} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/80 transition-colors">
-          {epic ? 'Salvar' : 'Criar Épico'}
+          {epic ? 'Salvar' : 'Criar Projeto'}
         </button>
       </div>
     </Modal>
@@ -141,20 +141,20 @@ function EpicCard({ epic }: { epic: Epic }) {
   const handleArchive = (e: React.MouseEvent) => {
     e.stopPropagation()
     dispatch({ type: 'UPDATE_EPIC', payload: { ...epic, status: 'archived', updatedAt: new Date().toISOString() } })
-    toast('Épico arquivado', 'success')
+    toast('Projeto arquivado', 'success')
   }
 
   const handleDuplicate = (e: React.MouseEvent) => {
     e.stopPropagation()
     dispatch({ type: 'DUPLICATE_EPIC', payload: epic.id })
-    toast('Épico duplicado', 'success')
+    toast('Projeto duplicado', 'success')
   }
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm(`Excluir épico "${epic.name}"? Esta ação não pode ser desfeita.`)) {
+    if (confirm(`Excluir projeto "${epic.name}"? Esta ação não pode ser desfeita.`)) {
       dispatch({ type: 'DELETE_EPIC', payload: epic.id })
-      toast('Épico excluído', 'success')
+      toast('Projeto excluído', 'success')
     }
   }
 
@@ -284,21 +284,21 @@ export default function Home() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-text">Épicos</h1>
-          <p className="text-sm text-muted mt-0.5">Gerencie todos os épicos de teste</p>
+          <h1 className="text-xl font-bold text-text">Projetos</h1>
+          <p className="text-sm text-muted mt-0.5">Gerencie todos os projetos de teste</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/80 transition-colors"
         >
           <Plus size={16} />
-          Novo Épico
+          Novo Projeto
         </button>
       </div>
 
       {/* KPI Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard icon={Layers} label="Épicos Ativos" value={totalActive} />
+        <KpiCard icon={Layers} label="Projetos Ativos" value={totalActive} />
         <KpiCard icon={CheckCircle} label="Cenários Totais" value={totalScenarios} iconColor="text-green" />
         <KpiCard icon={Bug} label="Bugs Críticos Abertos" value={criticalBugs} iconColor="text-red" />
         <KpiCard icon={CheckCircle} label="Taxa de Sucesso" value={`${successRate}%`} iconColor="text-purple" />
@@ -310,7 +310,7 @@ export default function Home() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="w-full bg-surface2 border border-white/[0.07] rounded-lg pl-9 pr-3 py-2 text-sm text-text outline-none focus:border-accent"
-            placeholder="Buscar épicos..."
+            placeholder="Buscar projetos..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -336,9 +336,9 @@ export default function Home() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={Layers}
-          title="Nenhum épico encontrado"
-          description={state.epics.length === 0 ? 'Crie seu primeiro épico para começar a gerenciar os testes.' : 'Tente ajustar os filtros de busca.'}
-          action={state.epics.length === 0 ? { label: 'Criar Épico', onClick: () => setShowCreate(true) } : undefined}
+          title="Nenhum projeto encontrado"
+          description={state.epics.length === 0 ? 'Crie seu primeiro projeto para começar a gerenciar os testes.' : 'Tente ajustar os filtros de busca.'}
+          action={state.epics.length === 0 ? { label: 'Criar Projeto', onClick: () => setShowCreate(true) } : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

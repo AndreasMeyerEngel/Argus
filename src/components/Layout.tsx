@@ -220,7 +220,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const activeEpics = state.epics.filter(e => ['running', 'planning', 'blocked'].includes(e.status)).slice(0, 8)
 
   const navItems = [
-    { to: '/', icon: LayoutGrid, label: 'Épicos' },
+    { to: '/', icon: LayoutGrid, label: 'Projetos' },
     { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
     { to: '/report', icon: FileText, label: 'Relatório' },
     { to: '/traceability', icon: GitBranch, label: 'Rastreabilidade' },
@@ -270,7 +270,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Active Epics */}
         {activeEpics.length > 0 && (
           <div className="px-3 pt-5 flex-1 overflow-y-auto min-h-0">
-            <p className="text-xs text-muted uppercase tracking-wider px-2 mb-2">Épicos Ativos</p>
+            <p className="text-xs text-muted uppercase tracking-wider px-2 mb-2">Projetos Ativos</p>
             <div className="flex flex-col gap-1">
               {activeEpics.map(epic => (
                 <button
