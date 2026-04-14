@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Trash2, MessageSquare, Check, X, AlertTriangle,
-  MinusCircle, SkipForward, Clock, Edit2, ChevronDown, Search
+  MinusCircle, SkipForward, Clock, Edit2, ChevronDown, Search,
+  UserPlus, Users, ChevronRight,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { PlanScenarioItem, TestPlan, Comment } from '../types'
@@ -13,16 +14,107 @@ import { Modal } from '../components/ui/Modal'
 type ExecStatus = PlanScenarioItem['status']
 
 const STATUS_CONFIG: Record<ExecStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  pending:  { label: 'Pendente', color: 'text-muted bg-surface2', icon: <Clock size={12} /> },
-  passed:   { label: 'Passou', color: 'text-green bg-green/10', icon: <Check size={12} /> },
-  failed:   { label: 'Falhou', color: 'text-red bg-red/10', icon: <X size={12} /> },
-  blocked:  { label: 'Bloqueado', color: 'text-yellow-400 bg-yellow-400/10', icon: <AlertTriangle size={12} /> },
-  partial:  { label: 'Parcial', color: 'text-orange-400 bg-orange-400/10', icon: <MinusCircle size={12} /> },
-  skipped:  { label: 'Pulado', color: 'text-gray-400 bg-gray-400/10', icon: <SkipForward size={12} /> },
+  pending:  { label: 'Pendente',   color: 'text-muted bg-surface2',           icon: <Clock size={12} /> },
+  passed:   { label: 'Passou',     color: 'text-green bg-green/10',            icon: <Check size={12} /> },
+  failed:   { label: 'Falhou',     color: 'text-red bg-red/10',               icon: <X size={12} /> },
+  blocked:  { label: 'Bloqueado',  color: 'text-yellow-400 bg-yellow-400/10', icon: <AlertTriangle size={12} /> },
+  partial:  { label: 'Parcial',    color: 'text-orange-400 bg-orange-400/10', icon: <MinusCircle size={12} /> },
+  skipped:  { label: 'Pulado',     color: 'text-gray-400 bg-gray-400/10',     icon: <SkipForward size={12} /> },
 }
 
 const PLAN_STATUS_LABELS: Record<TestPlan['status'], string> = {
   draft: 'Rascunho', active: 'Ativo', completed: 'Concluído', archived: 'Arquivado',
+}
+
+// ─── Assign Dropdown ───────────────────────────────────────────────────────────
+
+function AssignDropdown({
+  current,
+  knownTesters,
+  onAssign,
+  onClose,
+}: {
+  current: string
+  knownTesters: string[]
+  onAssign: (name: string) => void
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [input, setInput] = useState('')
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  const filtered = knownTesters.filter(
+    t => t !== current && (input === '' || t.toLowerCase().includes(input.toLowerCase()))
+  )
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && input.trim()) {
+      onAssign(input.trim())
+      onClose()
+    }
+    if (e.key === 'Escape') onClose()
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="absolute z-50 top-full mt-1 right-0 w-52 bg-surface border border-white/[0.12] rounded-xl shadow-xl flex flex-col overflow-hidden"
+    >
+      <div className="p-2 border-b border-white/[0.07]">
+        <input
+          autoFocus
+          className="w-full bg-surface2 rounded-lg px-2.5 py-1.5 text-xs text-text outline-none placeholder:text-muted"
+          placeholder="Nome do testador..."
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
+
+      <div className="flex flex-col max-h-44 overflow-y-auto py-1">
+        {current && (
+          <button
+            onClick={() => { onAssign(''); onClose() }}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted hover:text-red hover:bg-surface2 transition-colors text-left"
+          >
+            <X size={11} />
+            Remover atribuição
+          </button>
+        )}
+        {filtered.length === 0 && !input && !current && (
+          <p className="text-xs text-muted px-3 py-2">Nenhum testador cadastrado</p>
+        )}
+        {filtered.map(name => (
+          <button
+            key={name}
+            onClick={() => { onAssign(name); onClose() }}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs text-text hover:bg-surface2 transition-colors text-left"
+          >
+            <span className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] font-bold shrink-0">
+              {name[0]?.toUpperCase()}
+            </span>
+            {name}
+          </button>
+        ))}
+        {input.trim() && !knownTesters.includes(input.trim()) && (
+          <button
+            onClick={() => { onAssign(input.trim()); onClose() }}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs text-accent hover:bg-surface2 transition-colors text-left"
+          >
+            <UserPlus size={11} />
+            Atribuir a "{input.trim()}"
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Add Scenarios Modal ────────────────────────────────────────────────────────
@@ -46,7 +138,6 @@ function AddScenariosModal({
         s.area.toLowerCase().includes(search.toLowerCase()))
   )
 
-  // Group by epic
   const epicMap = Object.fromEntries(state.epics.map(e => [e.id, e.name]))
 
   const toggle = (id: string) =>
@@ -58,13 +149,13 @@ function AddScenariosModal({
 
   const handleAdd = () => {
     selected.forEach(scenarioId => {
-      const item: PlanScenarioItem = {
-        scenarioId,
-        assignedTo: '',
-        status: 'pending',
-        notes: '',
-      }
-      dispatch({ type: 'EXECUTE_PLAN_SCENARIO', payload: { planId, item } })
+      dispatch({
+        type: 'EXECUTE_PLAN_SCENARIO',
+        payload: {
+          planId,
+          item: { scenarioId, assignedTo: '', status: 'pending', notes: '' },
+        },
+      })
     })
     onClose()
   }
@@ -137,7 +228,7 @@ function AddScenariosModal({
   )
 }
 
-// ─── Execute Row Modal ─────────────────────────────────────────────────────────
+// ─── Execute Modal ─────────────────────────────────────────────────────────────
 
 function ExecuteModal({
   planId, item, scenarioTitle, onClose,
@@ -150,7 +241,7 @@ function ExecuteModal({
   const { state, dispatch } = useApp()
   const [status, setStatus] = useState<ExecStatus>(item.status)
   const [notes, setNotes] = useState(item.notes ?? '')
-  const [assignedTo, setAssignedTo] = useState(item.assignedTo ?? state.settings.userName ?? '')
+  const [executedBy, setExecutedBy] = useState(item.assignedTo || state.settings.userName || '')
 
   const handleSave = () => {
     dispatch({
@@ -161,9 +252,9 @@ function ExecuteModal({
           ...item,
           status,
           notes,
-          assignedTo,
+          assignedTo: item.assignedTo,
           executedAt: new Date().toISOString(),
-          executedBy: assignedTo,
+          executedBy,
         },
       },
     })
@@ -195,8 +286,8 @@ function ExecuteModal({
           <label className="block text-xs text-muted mb-1.5">Executado por</label>
           <input
             className="w-full bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent"
-            value={assignedTo}
-            onChange={e => setAssignedTo(e.target.value)}
+            value={executedBy}
+            onChange={e => setExecutedBy(e.target.value)}
           />
         </div>
         <div>
@@ -315,6 +406,34 @@ function KpiCard({ label, value, color }: { label: string; value: number; color:
   )
 }
 
+// ─── Assignee avatar chip ──────────────────────────────────────────────────────
+
+function AssigneeChip({ name, onClick }: { name: string; onClick: () => void }) {
+  if (!name) {
+    return (
+      <button
+        onClick={onClick}
+        className="flex items-center gap-1 text-xs text-muted hover:text-text transition-colors px-1.5 py-0.5 rounded hover:bg-surface2"
+      >
+        <UserPlus size={11} />
+        Atribuir
+      </button>
+    )
+  }
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 text-xs text-text hover:bg-surface2 px-1.5 py-0.5 rounded transition-colors"
+      title={`Atribuído a ${name} — clique para reatribuir`}
+    >
+      <span className="w-5 h-5 rounded-full bg-accent/20 text-accent flex items-center justify-center text-[10px] font-bold shrink-0">
+        {name[0]?.toUpperCase()}
+      </span>
+      <span className="max-w-[80px] truncate">{name}</span>
+    </button>
+  )
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function TestPlanPage() {
@@ -330,6 +449,12 @@ export default function TestPlanPage() {
   const [commentText, setCommentText] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  // Assignment state
+  const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkInput, setBulkInput] = useState('')
+  const [filterAssignee, setFilterAssignee] = useState<string>('all')
+
   if (!plan) {
     return (
       <div className="flex flex-col items-center gap-3 py-24 text-muted">
@@ -341,7 +466,7 @@ export default function TestPlanPage() {
     )
   }
 
-  // Build KPIs
+  // KPIs
   const counts: Record<ExecStatus, number> = {
     pending: 0, passed: 0, failed: 0, blocked: 0, partial: 0, skipped: 0,
   }
@@ -350,8 +475,74 @@ export default function TestPlanPage() {
   const done = total - counts.pending
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
-  // Enrich scenario items with title
   const scenarioMap = Object.fromEntries(state.scenarios.map(s => [s.id, s]))
+
+  // Known testers = unique assignedTo values + current user
+  const knownTesters = useMemo(() => {
+    const names = new Set<string>()
+    if (state.settings.userName) names.add(state.settings.userName)
+    plan.scenarios.forEach(s => { if (s.assignedTo) names.add(s.assignedTo) })
+    return [...names].sort()
+  }, [plan.scenarios, state.settings.userName])
+
+  // Filtered scenario list
+  const visibleScenarios = filterAssignee === 'all'
+    ? plan.scenarios
+    : filterAssignee === '__unassigned__'
+      ? plan.scenarios.filter(s => !s.assignedTo)
+      : plan.scenarios.filter(s => s.assignedTo === filterAssignee)
+
+  // Selection helpers
+  const allVisibleSelected = visibleScenarios.length > 0 &&
+    visibleScenarios.every(s => selectedIds.has(s.scenarioId))
+
+  const toggleAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        visibleScenarios.forEach(s => next.delete(s.scenarioId))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        visibleScenarios.forEach(s => next.add(s.scenarioId))
+        return next
+      })
+    }
+  }
+
+  const toggleOne = (scenarioId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(scenarioId) ? next.delete(scenarioId) : next.add(scenarioId)
+      return next
+    })
+  }
+
+  // Assign a single scenario
+  const assignOne = (item: PlanScenarioItem, name: string) => {
+    dispatch({
+      type: 'EXECUTE_PLAN_SCENARIO',
+      payload: { planId: plan.id, item: { ...item, assignedTo: name } },
+    })
+  }
+
+  // Bulk assign selected
+  const handleBulkAssign = (name: string) => {
+    if (!name.trim()) return
+    selectedIds.forEach(scenarioId => {
+      const item = plan.scenarios.find(s => s.scenarioId === scenarioId)
+      if (item) {
+        dispatch({
+          type: 'EXECUTE_PLAN_SCENARIO',
+          payload: { planId: plan.id, item: { ...item, assignedTo: name.trim() } },
+        })
+      }
+    })
+    setSelectedIds(new Set())
+    setBulkInput('')
+  }
 
   const handleAddComment = () => {
     if (!commentText.trim()) return
@@ -371,12 +562,15 @@ export default function TestPlanPage() {
   }
 
   const handleRemoveScenario = (scenarioId: string) => {
-    const updated: TestPlan = {
-      ...plan,
-      scenarios: plan.scenarios.filter(s => s.scenarioId !== scenarioId),
-      updatedAt: new Date().toISOString(),
-    }
-    dispatch({ type: 'UPDATE_TEST_PLAN', payload: updated })
+    dispatch({
+      type: 'UPDATE_TEST_PLAN',
+      payload: {
+        ...plan,
+        scenarios: plan.scenarios.filter(s => s.scenarioId !== scenarioId),
+        updatedAt: new Date().toISOString(),
+      },
+    })
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(scenarioId); return next })
   }
 
   return (
@@ -425,41 +619,98 @@ export default function TestPlanPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <KpiCard label="Total" value={total} color="text-text" />
-        <KpiCard label="Passou" value={counts.passed} color="text-green" />
-        <KpiCard label="Falhou" value={counts.failed} color="text-red" />
+        <KpiCard label="Total"     value={total}          color="text-text" />
+        <KpiCard label="Passou"    value={counts.passed}  color="text-green" />
+        <KpiCard label="Falhou"    value={counts.failed}  color="text-red" />
         <KpiCard label="Bloqueado" value={counts.blocked} color="text-yellow-400" />
-        <KpiCard label="Parcial" value={counts.partial} color="text-orange-400" />
-        <KpiCard label="Pendente" value={counts.pending} color="text-muted" />
+        <KpiCard label="Parcial"   value={counts.partial} color="text-orange-400" />
+        <KpiCard label="Pendente"  value={counts.pending} color="text-muted" />
       </div>
 
-      {/* Progress bar */}
+      {/* Progress */}
       <div className="flex flex-col gap-1.5">
         <div className="flex justify-between text-xs text-muted">
           <span>{done} de {total} executados</span>
           <span>{pct}%</span>
         </div>
         <div className="h-2 bg-surface2 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-accent rounded-full transition-all"
-            style={{ width: `${pct}%` }}
-          />
+          <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       {/* Scenarios section */}
       <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
+
+        {/* Section header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07] gap-3 flex-wrap">
           <h2 className="text-sm font-semibold text-text">Cenários</h2>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent/80 transition-colors"
-          >
-            <Plus size={13} />
-            Adicionar cenários
-          </button>
+
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            {/* Assignee filter */}
+            {knownTesters.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Users size={13} className="text-muted shrink-0" />
+                <select
+                  className="bg-surface2 border border-white/[0.07] rounded-lg px-2 py-1 text-xs text-text outline-none focus:border-accent"
+                  value={filterAssignee}
+                  onChange={e => { setFilterAssignee(e.target.value); setSelectedIds(new Set()) }}
+                >
+                  <option value="all">Todos</option>
+                  <option value="__unassigned__">Não atribuídos</option>
+                  {knownTesters.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent/80 transition-colors"
+            >
+              <Plus size={13} />
+              Adicionar
+            </button>
+          </div>
         </div>
 
+        {/* Bulk assignment toolbar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-accent/10 border-b border-accent/20 flex-wrap">
+            <span className="text-xs font-medium text-accent">
+              {selectedIds.size} selecionado{selectedIds.size > 1 ? 's' : ''}
+            </span>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <UserPlus size={13} className="text-accent shrink-0" />
+              <input
+                className="flex-1 min-w-0 bg-surface2 border border-white/[0.07] rounded-lg px-2.5 py-1 text-xs text-text outline-none focus:border-accent"
+                placeholder="Nome do testador..."
+                value={bulkInput}
+                onChange={e => setBulkInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleBulkAssign(bulkInput) }}
+                list="testers-datalist"
+              />
+              <datalist id="testers-datalist">
+                {knownTesters.map(t => <option key={t} value={t} />)}
+              </datalist>
+              <button
+                onClick={() => handleBulkAssign(bulkInput)}
+                disabled={!bulkInput.trim()}
+                className="px-3 py-1 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                Atribuir
+              </button>
+            </div>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-muted hover:text-text transition-colors shrink-0"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        {/* Scenario rows */}
         {plan.scenarios.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-12 text-muted">
             <p className="text-sm">Nenhum cenário adicionado ainda</p>
@@ -467,60 +718,144 @@ export default function TestPlanPage() {
               Adicionar cenários
             </button>
           </div>
+        ) : visibleScenarios.length === 0 ? (
+          <p className="text-sm text-muted text-center py-8">Nenhum cenário para este filtro</p>
         ) : (
-          <div className="divide-y divide-white/[0.04]">
-            {plan.scenarios.map(item => {
-              const scenario = scenarioMap[item.scenarioId]
-              const cfg = STATUS_CONFIG[item.status]
-              return (
-                <div
-                  key={item.scenarioId}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface2/50 transition-colors group"
-                >
-                  {/* Status badge */}
-                  <span
-                    className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${cfg.color}`}
+          <>
+            {/* Select-all row */}
+            <div className="flex items-center gap-3 px-4 py-2 border-b border-white/[0.04] bg-surface2/30">
+              <input
+                type="checkbox"
+                className="accent-accent shrink-0"
+                checked={allVisibleSelected}
+                onChange={toggleAll}
+              />
+              <span className="text-xs text-muted">Selecionar todos</span>
+            </div>
+
+            <div className="divide-y divide-white/[0.04]">
+              {visibleScenarios.map(item => {
+                const scenario = scenarioMap[item.scenarioId]
+                const cfg = STATUS_CONFIG[item.status]
+                const isSelected = selectedIds.has(item.scenarioId)
+
+                return (
+                  <div
+                    key={item.scenarioId}
+                    className={`flex items-center gap-3 px-4 py-3 transition-colors group ${
+                      isSelected ? 'bg-accent/5' : 'hover:bg-surface2/50'
+                    }`}
                   >
-                    {cfg.icon}
-                    {cfg.label}
-                  </span>
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      className="accent-accent shrink-0"
+                      checked={isSelected}
+                      onChange={() => toggleOne(item.scenarioId)}
+                    />
 
-                  {/* Title */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text truncate">
-                      {scenario?.title ?? `Cenário ${item.scenarioId}`}
-                    </p>
-                    {scenario && (
-                      <p className="text-xs text-muted mt-0.5">
-                        {scenario.area}
-                        {item.executedBy && ` · por ${item.executedBy}`}
-                        {item.notes && ` · ${item.notes}`}
+                    {/* Status badge */}
+                    <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${cfg.color}`}>
+                      {cfg.icon}
+                      {cfg.label}
+                    </span>
+
+                    {/* Title + meta */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-text truncate">
+                        {scenario?.title ?? `Cenário ${item.scenarioId}`}
                       </p>
-                    )}
-                  </div>
+                      {scenario && (
+                        <p className="text-xs text-muted mt-0.5 truncate">
+                          {scenario.area}
+                          {item.executedBy && ` · executado por ${item.executedBy}`}
+                          {item.notes && ` · ${item.notes}`}
+                        </p>
+                      )}
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button
-                      onClick={() => setExecuting(item)}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-colors"
-                    >
-                      <ChevronDown size={12} />
-                      Executar
-                    </button>
-                    <button
-                      onClick={() => handleRemoveScenario(item.scenarioId)}
-                      className="p-1.5 text-muted hover:text-red rounded-lg transition-colors"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {/* Assignee chip */}
+                    <div className="relative shrink-0">
+                      <AssigneeChip
+                        name={item.assignedTo}
+                        onClick={() => setAssigningId(
+                          assigningId === item.scenarioId ? null : item.scenarioId
+                        )}
+                      />
+                      {assigningId === item.scenarioId && (
+                        <AssignDropdown
+                          current={item.assignedTo}
+                          knownTesters={knownTesters}
+                          onAssign={name => assignOne(item, name)}
+                          onClose={() => setAssigningId(null)}
+                        />
+                      )}
+                    </div>
+
+                    {/* Execute / delete */}
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        onClick={() => setExecuting(item)}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-colors"
+                      >
+                        <ChevronDown size={12} />
+                        Executar
+                      </button>
+                      <button
+                        onClick={() => handleRemoveScenario(item.scenarioId)}
+                        className="p-1.5 text-muted hover:text-red rounded-lg transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Testers summary */}
+      {knownTesters.length > 0 && (
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={14} className="text-muted" />
+            <h2 className="text-sm font-semibold text-text">Testadores</h2>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {knownTesters.map(tester => {
+              const assigned = plan.scenarios.filter(s => s.assignedTo === tester)
+              const passedCount = assigned.filter(s => s.status === 'passed').length
+              const pendingCount = assigned.filter(s => s.status === 'pending').length
+              return (
+                <button
+                  key={tester}
+                  onClick={() => setFilterAssignee(filterAssignee === tester ? 'all' : tester)}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-colors ${
+                    filterAssignee === tester
+                      ? 'border-accent/40 bg-accent/10'
+                      : 'border-white/[0.07] bg-surface2 hover:border-accent/20'
+                  }`}
+                >
+                  <span className="w-7 h-7 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-bold shrink-0">
+                    {tester[0]?.toUpperCase()}
+                  </span>
+                  <div className="text-left">
+                    <p className="text-xs font-medium text-text">{tester}</p>
+                    <p className="text-[10px] text-muted">
+                      {assigned.length} cenário{assigned.length !== 1 ? 's' : ''}
+                      {pendingCount > 0 && ` · ${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}`}
+                      {passedCount > 0 && ` · ${passedCount} passou`}
+                    </p>
+                  </div>
+                  <ChevronRight size={12} className="text-muted ml-1" />
+                </button>
               )
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Comments */}
       <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
@@ -531,7 +866,6 @@ export default function TestPlanPage() {
         </div>
 
         <div className="p-4 flex flex-col gap-4">
-          {/* Comment list */}
           {(plan.comments ?? []).length > 0 && (
             <div className="flex flex-col gap-3">
               {plan.comments.map(c => (
@@ -559,7 +893,6 @@ export default function TestPlanPage() {
             </div>
           )}
 
-          {/* New comment */}
           <div className="flex gap-2">
             <textarea
               className="flex-1 bg-surface2 border border-white/[0.07] rounded-lg px-3 py-2 text-sm text-text outline-none focus:border-accent resize-none"
@@ -567,9 +900,7 @@ export default function TestPlanPage() {
               placeholder="Adicionar comentário..."
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddComment()
-              }}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddComment() }}
             />
             <button
               onClick={handleAddComment}
